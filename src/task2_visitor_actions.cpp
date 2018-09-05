@@ -6,7 +6,8 @@ tts("tts_module",ros::this_node::getName()),
 speech("echo_module",ros::this_node::getName()),
 nav_module("nav_module", ros::this_node::getName()),
 gripper_module("gripper_module", ros::this_node::getName()),
-head("head_module",ros::this_node::getName())
+head("head_module",ros::this_node::getName()),
+image_diff("image_diff_module", ros::this_node::getName())
 {
   this->state =  T2_INIT;
   this->current_action_retries_ = 0;
@@ -179,8 +180,52 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
 
 
  bool CTask2VisitorActions::KimbleStateMachine(void){
+     bool action_finished = false;
 
-     return false;
+     switch (this->kimble_state) {
+         case kimble_request_follow:
+            if (this->ActionSaySentence("Please follow me to the bedroom")){
+                this->kimble_state = kimble_nav_bedroom;
+            }
+            break;
+        case kimble_nav_bedroom:
+            if (this->ActionNavigate(this->config_.bedroom_poi)){
+                this->kimble_state = kimble_go_outside;
+            }
+            break;
+        case kimble_go_outside:
+            if (this->ActionNavigate(this->config_.bedroom_outside_poi)){
+                this->kimble_state = kimble_move_head;
+            }
+            break;
+        case kimble_move_head:
+            if (this->ActionMoveHead(this->config_.head_pos_kimble_pan, this->config_.head_pos_kimble_tilt)){
+                this->kimble_state = kimble_wait_leave;
+                this->image_diff.set_reference_image();
+                this->image_diff.clear_change();
+            }
+            break;
+        case kimble_wait_leave:
+            if (this->image_diff.has_changed()){
+                this->kimble_state = kimble_nav_door;
+            }
+            break;
+        case kimble_nav_door:
+            if (this->ActionNavigate(this->config_.door_poi)){
+                this->kimble_state = kimble_say_goodbye;
+            }
+            break;
+        case kimble_say_goodbye:
+            if (this->GenericSayGoodbye()){
+                this->kimble_state = kimble_finish;
+            }
+            break;
+        case kimble_finish:
+            action_finished = true;
+            break;
+     }
+
+     return action_finished;
  }
  bool CTask2VisitorActions::DelimanStateMachine(void){
      bool action_finished = false;
@@ -292,11 +337,16 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
         case plumber_move_head:
             if (this->ActionMoveHead(this->config_.head_pos_plumber_pan,this->config_.head_pos_plumber_tilt)){
                 this->plumber_state = plumber_wait_leave;
+                this->image_diff.set_reference_image();
+                this->image_diff.clear_change();
             }
             break;
         case plumber_wait_leave:
+            if (this->image_diff.has_changed()){
+                this->plumber_state = plumber_nav_door;
+            }
             break;
-        case plumber_guide_door:
+        case plumber_nav_door:
             if (this->ActionNavigate(this->config_.door_poi)){
                 this->plumber_state = plumber_say_goodbye;
             }
@@ -315,19 +365,6 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
 
 bool CTask2VisitorActions::SetPOIDependingOnCommand(int command_id){
     bool recognised_command = true;
-    /*switch (command_id) {
-        case (this->config_.speech_bathroom_id):
-            this->plumber_destination_name_ = "Bathroom";
-            this->plumber_destination_poi_ = config_.bathroom_poi;
-            break;
-        case (this->config_.speech_kitchen_id):
-            this->plumber_destination_name_ = "Kitchen";
-            this->plumber_destination_poi_ = config_.kitchen_poi;
-            break;
-        default:
-            recognised_command = false;
-    }
-    */
     if (command_id == this->config_.speech_bathroom_id){
         this->plumber_destination_name_ = "Bathroom";
         this->plumber_destination_poi_ = config_.bathroom_poi;

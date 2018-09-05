@@ -44,6 +44,7 @@
 
 #include <nen_modules/echo_module.h>
 #include <nen_common_msgs/EchoCmdAction.h>
+#include <nen_modules/image_diff_module.h>
 
 
 #include <task2_visitor_actions/Task2VisitorActionsConfig.h>
@@ -66,10 +67,13 @@ typedef enum {
 
 typedef enum {
   kimble_request_follow,
-  kimble_reach_bedroom,
+  kimble_nav_bedroom,
   kimble_go_outside,
   kimble_move_head,
-  kimble_wait_leave
+  kimble_wait_leave,
+  kimble_nav_door,
+  kimble_say_goodbye,
+  kimble_finish
 } task2_kimble_states;
 
 typedef enum{
@@ -99,7 +103,7 @@ typedef enum {
     plumber_nav_poi,
     plumber_move_head,
     plumber_wait_leave,
-    plumber_guide_door,
+    plumber_nav_door,
     plumber_say_goodbye,
     plumber_finish
 } task2_plumber_states;
@@ -151,6 +155,7 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
 
     //Head module for the plumber and kimble
     CHeadModule head;
+    CImageDiffModule image_diff;
 
     //Auxiliary variables to start task or ring bell from the dynamic_reconfigure
 

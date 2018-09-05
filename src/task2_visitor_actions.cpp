@@ -5,7 +5,8 @@ CTask2VisitorActions::CTask2VisitorActions(const std::string &name, const std::s
 tts("tts_module",ros::this_node::getName()),
 speech("echo_module",ros::this_node::getName()),
 nav_module("nav_module", ros::this_node::getName()),
-gripper_module("gripper_module", ros::this_node::getName())
+gripper_module("gripper_module", ros::this_node::getName()),
+head("head_module",ros::this_node::getName())
 {
   this->state =  T2_INIT;
   this->current_action_retries_ = 0;
@@ -73,6 +74,33 @@ bool CTask2VisitorActions::ActionSaySentence(const std::string & sentence){
 
 bool CTask2VisitorActions::GenericSayGoodbye (){
      return this->ActionSaySentence("Thanks for coming. Goodbye!");
+}
+
+bool CTask2VisitorActions::ActionMoveHead(double pan_angle, double tilt_angle){
+    static bool is_command_sent = false;
+    if (!is_command_sent){
+        this->head.move_to(pan_angle,tilt_angle);
+        is_command_sent = true;
+        this->current_action_retries_ = 0;
+    }
+    else {
+      if (this->head.is_finished()){
+        if (this->head.get_status()==HEAD_MODULE_SUCCESS or this->current_action_retries_ >= this->config_.max_action_retries){
+          is_command_sent  = false;
+          this->current_action_retries_ = 0;
+          return true;
+        }
+        else {
+          ROS_INFO ("[TASK2] HEAD module finished unsuccessfully. Retrying. Total retries = %d of %d", this->current_action_retries_, this->config_.max_action_retries);
+          is_command_sent  = false;
+          this->current_action_retries_ ++;
+          return false;
+        }
+
+      }
+    }
+    return false;
+
 }
 
 void CTask2VisitorActions::StartActions(Person p){
@@ -233,5 +261,85 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
      return action_finished;
  }
  bool CTask2VisitorActions::PlumberStateMachine(void){
-     return false;
+     bool action_finished = false;
+     switch (this->plumber_state) {
+        case plumber_ask_destination:
+            if (this->ActionSaySentence("Which room would you like to visit?")){
+                this->plumber_state = plumber_listen_destination;
+                this->speech.listen();
+            }
+            break;
+        case plumber_listen_destination:
+            if (this->speech.is_finished()){
+                if (this->speech.get_status()==ECHO_MODULE_SUCCESS){
+                    this->speech_command_ = this->speech.get_result();
+                    if (SetPOIDependingOnCommand(this->speech_command_.cmd.cmd_id)){
+                        this->plumber_state = plumber_request_follow;
+                    }
+                }
+            }
+            break;
+        case plumber_request_follow:
+            if (this->ActionSaySentence("Please follow me to the"+this->plumber_destination_name_)){
+                this->plumber_state = plumber_nav_poi;
+            }
+            break;
+        case plumber_nav_poi:
+            if (this->ActionNavigate(this->plumber_destination_poi_)){
+                this->plumber_state = plumber_wait_leave;
+            }
+            break;
+        case plumber_move_head:
+            if (this->ActionMoveHead(this->config_.head_pos_plumber_pan,this->config_.head_pos_plumber_tilt)){
+                this->plumber_state = plumber_wait_leave;
+            }
+            break;
+        case plumber_wait_leave:
+            break;
+        case plumber_guide_door:
+            if (this->ActionNavigate(this->config_.door_poi)){
+                this->plumber_state = plumber_say_goodbye;
+            }
+            break;
+        case plumber_say_goodbye:
+            if (this->GenericSayGoodbye()){
+                this->plumber_state = plumber_finish;
+            }
+            break;
+        case plumber_finish:
+            action_finished = true;
+            break;
+     }
+     return action_finished;
  }
+
+bool CTask2VisitorActions::SetPOIDependingOnCommand(int command_id){
+    bool recognised_command = true;
+    /*switch (command_id) {
+        case (this->config_.speech_bathroom_id):
+            this->plumber_destination_name_ = "Bathroom";
+            this->plumber_destination_poi_ = config_.bathroom_poi;
+            break;
+        case (this->config_.speech_kitchen_id):
+            this->plumber_destination_name_ = "Kitchen";
+            this->plumber_destination_poi_ = config_.kitchen_poi;
+            break;
+        default:
+            recognised_command = false;
+    }
+    */
+    if (command_id == this->config_.speech_bathroom_id){
+        this->plumber_destination_name_ = "Bathroom";
+        this->plumber_destination_poi_ = config_.bathroom_poi;
+
+    }
+    else if (command_id == this->config_.speech_kitchen_id){
+        this->plumber_destination_name_ = "Kitchen";
+        this->plumber_destination_poi_ = config_.kitchen_poi;
+
+    }
+    else {
+        recognised_command = false;
+    }
+    return recognised_command;
+}

@@ -38,6 +38,8 @@
 #include <tiago_modules/tts_module.h>
 #include <tiago_modules/nav_module.h>
 #include <tiago_modules/gripper_module.h>
+#include <tiago_modules/head_module.h>
+
 
 
 #include <nen_modules/echo_module.h>
@@ -95,6 +97,7 @@ typedef enum {
     plumber_listen_destination,
     plumber_request_follow,
     plumber_nav_poi,
+    plumber_move_head,
     plumber_wait_leave,
     plumber_guide_door,
     plumber_say_goodbye,
@@ -140,9 +143,14 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
     //Amazon echo modules for the plumber
     CEchoModule speech;
     nen_common_msgs::EchoCmdResult speech_command_;
+    std::string plumber_destination_name_;
+    std::string plumber_destination_poi_;
 
     //Gripper module for the postman
     CGripperModule gripper_module;
+
+    //Head module for the plumber and kimble
+    CHeadModule head;
 
     //Auxiliary variables to start task or ring bell from the dynamic_reconfigure
 
@@ -173,7 +181,9 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
     bool ActionSaySentence(const std::string & sentence);
     bool ActionNavigate(std::string & POI);
     bool GenericSayGoodbye();
+    bool ActionMoveHead(double pan_angle, double tilt_angle);
 
+    bool SetPOIDependingOnCommand(int command_id);
   protected:
     void state_machine(void);
 

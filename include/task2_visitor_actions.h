@@ -161,6 +161,7 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
 
     bool cancel_pending_;
     bool start_actions_;
+    bool is_action_finished_;
     //Variables for the delays
     Person visitor_;
 
@@ -189,7 +190,20 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
     bool ActionMoveHead(double pan_angle, double tilt_angle);
 
     bool SetPOIDependingOnCommand(int command_id);
+
+       /*!
+          \brief Function that executes the behaviour for the current visitor
+          \param
+          \pre visitor_ is defined
+          \post  new step of the action for the visitor_ is done
+          \return True when the action is finished.
+       */
+       bool ExecuteBehaviorForVisitor(const Person & person);
+
+
+
   protected:
+
     void state_machine(void);
 
    //Specific state machines
@@ -245,16 +259,6 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
         *
         */
        task2_action_states get_state(void);
-
-       /*!
-          \brief Function that executes the behaviour for the current visitor
-          \param
-          \pre visitor_ is defined
-          \post  new step of the action for the visitor_ is done
-          \return True when the action is finished.
-       */
-       bool ExecuteBehaviorForVisitor(const Person & person);
-
 
 
 

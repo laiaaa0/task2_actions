@@ -105,6 +105,7 @@ bool CTask2VisitorActions::ActionMoveHead(double pan_angle, double tilt_angle){
 }
 
 void CTask2VisitorActions::StartActions(Person p){
+    this->is_action_finished_ = false;
     this->visitor_ = p;
     this->start_actions_ = true;
 }
@@ -123,6 +124,7 @@ void CTask2VisitorActions::state_machine(void)
             break;
         case T2_EXECUTING:
             if (this->ExecuteBehaviorForVisitor(this->visitor_)){
+ 		this->is_action_finished_ = true;
                 this->state = T2_END;
             }
             break;
@@ -149,7 +151,7 @@ void CTask2VisitorActions::stop(void){
 }
 
 bool CTask2VisitorActions::is_finished(void){
-    return false;
+    return this->is_action_finished_;
 }
 
 task2_action_states CTask2VisitorActions::get_state(void){

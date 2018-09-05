@@ -5,7 +5,8 @@ project(task2_visitor_actions)
 # ********************************************************************
 #                 Add catkin additional components here
 # ********************************************************************
-find_package(catkin REQUIRED COMPONENTS iri_ros_tools  tiago_modules nen_modules )
+find_package(catkin REQUIRED COMPONENTS iri_ros_tools  tiago_modules nen_modules 
+task2_recognition)
 
 find_package(iriutils REQUIRED)
 
@@ -70,7 +71,7 @@ catkin_package(
 
  nen_modules
  tiago_modules
-
+ task2_recognition
 # ********************************************************************
 #      Add system and labrobotica run time dependencies here
 # ********************************************************************

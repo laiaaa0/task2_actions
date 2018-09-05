@@ -48,6 +48,7 @@
 
 
 #include <task2_visitor_actions/Task2VisitorActionsConfig.h>
+#include <person_definition.h>
 
 
 // [publisher subscriber headers]
@@ -58,9 +59,9 @@
 
 
 typedef enum {
-    T2_INIT,
+    T2_INIT_ACTION,
     T2_EXECUTING,
-    T2_END
+    T2_END_ACTION
 } task2_action_states;
 
 
@@ -108,7 +109,6 @@ typedef enum {
     plumber_finish
 } task2_plumber_states;
 
-typedef enum {Deliman, Postman, Kimble, Plumber, Undefined} Person;
 
 /**
  * \brief IRI ROS Specific Algorithm Class

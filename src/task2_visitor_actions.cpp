@@ -9,7 +9,7 @@ gripper_module("gripper_module", ros::this_node::getName()),
 head("head_module",ros::this_node::getName()),
 image_diff("image_diff_module", ros::this_node::getName())
 {
-  this->state =  T2_INIT;
+  this->state =  T2_INIT_ACTION;
   this->current_action_retries_ = 0;
 
 
@@ -115,7 +115,7 @@ void CTask2VisitorActions::StartActions(Person p){
 void CTask2VisitorActions::state_machine(void)
 {
     switch (this->state) {
-        case T2_INIT:
+        case T2_INIT_ACTION:
             if (this->start_actions_){
                 if (this->visitor_ != Undefined){
                     this->state = T2_EXECUTING;
@@ -125,11 +125,11 @@ void CTask2VisitorActions::state_machine(void)
         case T2_EXECUTING:
             if (this->ExecuteBehaviorForVisitor(this->visitor_)){
  		this->is_action_finished_ = true;
-                this->state = T2_END;
+                this->state = T2_END_ACTION;
             }
             break;
-        case T2_END:
-            this->state = T2_INIT;
+        case T2_END_ACTION:
+            this->state = T2_INIT_ACTION;
             break;
 
     }

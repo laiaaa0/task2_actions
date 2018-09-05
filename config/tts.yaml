@@ -1,0 +1,9 @@
+rate_hz: 10.0
+
+action_max_retries: 5
+feedback_watchdog_time_s: 20.0
+enable_watchdog: True
+timeout_s: 10.0
+enable_timeout: False
+enabled: True
+

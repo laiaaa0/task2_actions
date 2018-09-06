@@ -2,13 +2,14 @@
 
 CTask2VisitorActions::CTask2VisitorActions(const std::string &name, const std::string &name_space) : CModule(name,name_space),
 
-tts("tts_module",ros::this_node::getName()),
-speech("echo_module",ros::this_node::getName()),
-nav_module("nav_module", ros::this_node::getName()),
-gripper_module("gripper_module", ros::this_node::getName()),
-head("head_module",ros::this_node::getName()),
-image_diff("image_diff_module", ros::this_node::getName())
+tts("tts_module", this->module_nh.getNamespace()),
+speech("echo_module",this->module_nh.getNamespace()),
+nav_module("nav_module", this->module_nh.getNamespace()),
+gripper_module("gripper_module", this->module_nh.getNamespace()),
+head("head_module",this->module_nh.getNamespace()),
+image_diff("image_diff_module", this->module_nh.getNamespace())
 {
+  this->start_operation();
   this->state =  T2_INIT_ACTION;
   this->current_action_retries_ = 0;
 

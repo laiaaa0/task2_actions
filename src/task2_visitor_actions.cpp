@@ -49,6 +49,7 @@ bool CTask2VisitorActions::ActionNavigate(std::string & POI){
 
 
 bool CTask2VisitorActions::ActionSaySentence(const std::string & sentence){
+
   static bool is_sentence_sent = false;
   if (!is_sentence_sent){
     tts.say(sentence);
@@ -56,9 +57,11 @@ bool CTask2VisitorActions::ActionSaySentence(const std::string & sentence){
   }
   else {
     if (tts.is_finished()){
+	
       if (tts.get_status()==TTS_MODULE_SUCCESS or this->current_action_retries_ >= this->config_.max_action_retries){
         is_sentence_sent  = false;
         this->current_action_retries_ = 0;
+	ROS_INFO("[TASK2] ActionSaySentence - Returning TRUE");
         return true;
 
       }
@@ -109,6 +112,7 @@ void CTask2VisitorActions::StartActions(Person p){
     this->is_action_finished_ = false;
     this->visitor_ = p;
     this->start_actions_ = true;
+    this->SetInitialStatesAllPersons();
 }
 
 
@@ -159,20 +163,23 @@ task2_action_states CTask2VisitorActions::get_state(void){
     return this->state;
 }
 
+void CTask2VisitorActions::SetInitialStatesAllPersons(){
+
+            this->kimble_state = kimble_request_follow;
+            this->deliman_state = deliman_request_follow_kitchen;
+            this->postman_state = postman_extend_arm;
+            this->plumber_state = plumber_ask_destination;
+}
 bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
     switch (person) {
         case Kimble:
-            this->kimble_state = kimble_request_follow;
             return KimbleStateMachine();
             break;
         case Deliman:
-            this->deliman_state = deliman_request_follow_kitchen;
             return DelimanStateMachine();
         case Postman:
-            this->postman_state = postman_extend_arm;
             return PostmanStateMachine();
         case Plumber:
-            this->plumber_state = plumber_ask_destination;
             return PlumberStateMachine();
         default:
             return false;
@@ -234,33 +241,39 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
      bool action_finished = false;
      switch (this->deliman_state) {
          case deliman_request_follow_kitchen:
+	    ROS_INFO("[TASK2Actions] Request follow");
             if (this->ActionSaySentence("Please follow me to the kitchen")){
                 this->deliman_state = deliman_guide_kitchen;
             }
             break;
          case deliman_guide_kitchen:
+	    ROS_INFO("[TASK2Actions] Navigate kitchen");
             if (this->ActionNavigate(this->config_.kitchen_poi)){
                 this->deliman_state = deliman_request_deliver;
             }
             break;
          case deliman_request_deliver:
+	    ROS_INFO("[TASK2Actions] Request deliver breakfast");
             if (this->ActionSaySentence("Please deliver the breakfast on the kitchen table")){
                 this->deliman_state = deliman_request_follow_door;
             }
             break;
          case deliman_request_follow_door:
+	    ROS_INFO("[TASK2Actions] Request follow to door");
              if (this->ActionSaySentence("Thanks. Please follow me to the door")){
-                 this->deliman_state = deliman_request_follow_door;
+                 this->deliman_state = deliman_guide_door;
              }
             break;
          case deliman_guide_door:
+	    ROS_INFO("[TASK2Actions] Navigate to door");
              if (this->ActionNavigate(this->config_.door_poi)){
                  this->deliman_state = deliman_say_goodbye;
              }
             break;
          case deliman_say_goodbye:
+	    ROS_INFO("[TASK2Actions] Say goodbye");
             if (this->GenericSayGoodbye()){
-
+		this->deliman_state = deliman_finish;
             }
             break;
          case deliman_finish:

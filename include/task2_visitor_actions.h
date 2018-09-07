@@ -199,6 +199,7 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
           \return True when the action is finished.
        */
        bool ExecuteBehaviorForVisitor(const Person & person);
+     void SetInitialStatesAllPersons();
 
 
 

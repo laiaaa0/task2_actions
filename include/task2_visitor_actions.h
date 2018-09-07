@@ -189,7 +189,7 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
     bool GenericSayGoodbye();
     bool ActionMoveHead(double pan_angle, double tilt_angle);
 
-    bool SetPOIDependingOnCommand(int command_id);
+    bool SetPOIDependingOnCommand(const std::string & command_str);
 
        /*!
           \brief Function that executes the behaviour for the current visitor

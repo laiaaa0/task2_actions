@@ -57,7 +57,7 @@ bool CTask2VisitorActions::ActionSaySentence(const std::string & sentence){
   }
   else {
     if (tts.is_finished()){
-	
+
       if (tts.get_status()==TTS_MODULE_SUCCESS or this->current_action_retries_ >= this->config_.max_action_retries){
         is_sentence_sent  = false;
         this->current_action_retries_ = 0;
@@ -78,7 +78,7 @@ bool CTask2VisitorActions::ActionSaySentence(const std::string & sentence){
 }
 
 bool CTask2VisitorActions::GenericSayGoodbye (){
-     return this->ActionSaySentence("Thanks for coming. Goodbye!");
+     return this->ActionSaySentence(this->config_.goodbye_sentence);
 }
 
 bool CTask2VisitorActions::ActionMoveHead(double pan_angle, double tilt_angle){
@@ -325,7 +325,7 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
      bool action_finished = false;
      switch (this->plumber_state) {
         case plumber_ask_destination:
-            if (this->ActionSaySentence("Which room would you like to visit?")){
+            if (this->ActionSaySentence(this->config_.sentence_which_room)){
                 this->plumber_state = plumber_listen_destination;
                 this->speech.listen();
             }
@@ -334,14 +334,16 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
             if (this->speech.is_finished()){
                 if (this->speech.get_status()==ECHO_MODULE_SUCCESS){
                     this->speech_command_ = this->speech.get_result();
-                    if (SetPOIDependingOnCommand(this->speech_command_.cmd.cmd_id)){
-                        this->plumber_state = plumber_request_follow;
+                    if (this->speech_command_.cmd.cmd_id == this->config_.speech_destination){
+                        if (SetPOIDependingOnCommand(this->speech_command_.cmd.text_seq[0])){
+                            this->plumber_state = plumber_request_follow;
+                        }
                     }
                 }
             }
             break;
         case plumber_request_follow:
-            if (this->ActionSaySentence("Please follow me to the"+this->plumber_destination_name_)){
+            if (this->ActionSaySentence("Please follow me to the "+this->plumber_destination_name_)){
                 this->plumber_state = plumber_nav_poi;
             }
             break;
@@ -379,17 +381,14 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
      return action_finished;
  }
 
-bool CTask2VisitorActions::SetPOIDependingOnCommand(int command_id){
+bool CTask2VisitorActions::SetPOIDependingOnCommand(const std::string & command_str){
     bool recognised_command = true;
-    if (command_id == this->config_.speech_bathroom_id){
-        this->plumber_destination_name_ = "Bathroom";
+    this->plumber_destination_name_ = command_str;
+    if (command_str == this->config_.bathroom_name){
         this->plumber_destination_poi_ = config_.bathroom_poi;
-
     }
-    else if (command_id == this->config_.speech_kitchen_id){
-        this->plumber_destination_name_ = "Kitchen";
-        this->plumber_destination_poi_ = config_.kitchen_poi;
-
+    else if (command_str == this->config_.bedroom_name){
+        this->plumber_destination_poi_ = config_.bedroom_poi;
     }
     else {
         recognised_command = false;

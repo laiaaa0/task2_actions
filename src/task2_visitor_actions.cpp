@@ -194,21 +194,27 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
 
      switch (this->kimble_state) {
          case kimble_request_follow:
+            ROS_INFO("[TASK2Actions] Requesting to follow");
             if (this->ActionSaySentence("Please follow me to the bedroom")){
                 this->kimble_state = kimble_nav_bedroom;
             }
             break;
         case kimble_nav_bedroom:
+            ROS_INFO("[TASK2Actions] Navigation to bedroom");
             if (this->ActionNavigate(this->config_.bedroom_poi)){
                 this->kimble_state = kimble_go_outside;
             }
             break;
+            //TODO : add state that says TIAGo will wait outside
         case kimble_go_outside:
+           ROS_INFO("[TASK2Actions] Navigation outside of bedroom");
             if (this->ActionNavigate(this->config_.bedroom_outside_poi)){
                 this->kimble_state = kimble_move_head;
             }
             break;
         case kimble_move_head:
+
+           ROS_INFO("[TASK2Actions] Moving head");
             if (this->ActionMoveHead(this->config_.head_pos_kimble_pan, this->config_.head_pos_kimble_tilt)){
                 this->kimble_state = kimble_wait_leave;
                 this->image_diff.set_reference_image();
@@ -216,21 +222,25 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
             }
             break;
         case kimble_wait_leave:
+            ROS_INFO("[TASK2Actions] Waiting for image change");
             if (this->image_diff.has_changed()){
                 this->kimble_state = kimble_nav_door;
             }
             break;
         case kimble_nav_door:
+            ROS_INFO("[TASK2Actions] Navigation to door");
             if (this->ActionNavigate(this->config_.door_poi)){
                 this->kimble_state = kimble_say_goodbye;
             }
             break;
         case kimble_say_goodbye:
+            ROS_INFO("[TASK2Actions] Saying goodbye");
             if (this->GenericSayGoodbye()){
                 this->kimble_state = kimble_finish;
             }
             break;
         case kimble_finish:
+            ROS_INFO("[TASK2Actions] END");
             action_finished = true;
             break;
      }
@@ -285,36 +295,42 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
  bool CTask2VisitorActions::PostmanStateMachine(void){
      bool action_finished = false;
      switch (this->postman_state) {
-        case postman_extend_arm:
+        case postman_extend_arm: //TODO : Is necessary ?
             this->postman_state = postman_ask_deliver;
             break;
         case postman_ask_deliver:
+            ROS_INFO("[TASK2Actions]Requesting to deliver mail into hand");
             if (this->ActionSaySentence("Please put the mail in my hand")){
                 this->postman_state = postman_close_gripper;
                 this->gripper_module.close_grasp();
             }
             break;
         case postman_close_gripper:
+            ROS_INFO("[TASK2Actions]Closing gripper");
             if (this->gripper_module.is_finished()){
                 this->postman_state = postman_say_goodbye;
             }
             break;
         case postman_say_goodbye:
+            ROS_INFO("[TASK2Actions] Saying goodbye");
             if (this->GenericSayGoodbye()){
                 this->postman_state = postman_reach_bedroom;
             }
             break;
         case postman_reach_bedroom:
+            ROS_INFO("[TASK2Actions] Navigation to bedroom");
             if (this->ActionNavigate(this->config_.bedroom_poi)){
                 this->postman_state = postman_request_get_package;
             }
             break;
         case postman_request_get_package:
+            ROS_INFO("[TASK2Actions] Request to take package");
             if (this->ActionSaySentence("Hello Granny Annie, please take the mail from my hand")){
                 this->postman_state = postman_finish;
             }
             break;
         case postman_finish:
+            ROS_INFO("[TASK2Actions]END");
             action_finished = true;
             break;
      }
@@ -325,12 +341,14 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
      bool action_finished = false;
      switch (this->plumber_state) {
         case plumber_ask_destination:
+            ROS_INFO("[TASK2Actions] Asking for destination");
             if (this->ActionSaySentence(this->config_.sentence_which_room)){
                 this->plumber_state = plumber_listen_destination;
                 this->speech.listen();
             }
             break;
         case plumber_listen_destination:
+            ROS_INFO("[TASK2Actions] Listening for destination");
             if (this->speech.is_finished()){
                 if (this->speech.get_status()==ECHO_MODULE_SUCCESS){
                     this->speech_command_ = this->speech.get_result();
@@ -343,16 +361,19 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
             }
             break;
         case plumber_request_follow:
+            ROS_INFO("[TASK2Actions] Request to follow to the room");
             if (this->ActionSaySentence("Please follow me to the "+this->plumber_destination_name_)){
                 this->plumber_state = plumber_nav_poi;
             }
             break;
         case plumber_nav_poi:
+            ROS_INFO("[TASK2Actions] Navigation to destination");
             if (this->ActionNavigate(this->plumber_destination_poi_)){
                 this->plumber_state = plumber_wait_leave;
             }
             break;
         case plumber_move_head:
+            ROS_INFO("[TASK2Actions] Moving head");
             if (this->ActionMoveHead(this->config_.head_pos_plumber_pan,this->config_.head_pos_plumber_tilt)){
                 this->plumber_state = plumber_wait_leave;
                 this->image_diff.set_reference_image();
@@ -360,21 +381,25 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
             }
             break;
         case plumber_wait_leave:
+            ROS_INFO("[TASK2Actions] Waiting for plumber to leave");
             if (this->image_diff.has_changed()){
                 this->plumber_state = plumber_nav_door;
             }
             break;
         case plumber_nav_door:
+            ROS_INFO("[TASK2Actions] Navigation to door");
             if (this->ActionNavigate(this->config_.door_poi)){
                 this->plumber_state = plumber_say_goodbye;
             }
             break;
         case plumber_say_goodbye:
+            ROS_INFO("[TASK2Actions] Saying goodbye");
             if (this->GenericSayGoodbye()){
                 this->plumber_state = plumber_finish;
             }
             break;
         case plumber_finish:
+            ROS_INFO("[TASK2Actions] END");
             action_finished = true;
             break;
      }
@@ -387,8 +412,8 @@ bool CTask2VisitorActions::SetPOIDependingOnCommand(const std::string & command_
     if (command_str == this->config_.bathroom_name){
         this->plumber_destination_poi_ = config_.bathroom_poi;
     }
-    else if (command_str == this->config_.bedroom_name){
-        this->plumber_destination_poi_ = config_.bedroom_poi;
+    else if (command_str == this->config_.kitchen_name){
+        this->plumber_destination_poi_ = config_.kitchen_poi;
     }
     else {
         recognised_command = false;

@@ -145,6 +145,23 @@ void CTask2VisitorActions::reconfigure_callback(task2_visitor_actions::Task2Visi
 {
   ROS_INFO("CTask2VisitorActions: reconfigure callback");
   this->lock();
+
+  if (config.start_plumber){
+      this->StartActions(Plumber);
+      config.start_plumber = false;
+  }
+  if (config.start_kimble){
+      this->StartActions(Kimble);
+      config.start_kimble = false;
+  }
+  if (config.start_postman){
+      this->StartActions(Postman);
+      config.start_postman = false;
+  }
+  if (config.start_deliman){
+      this->StartActions(Deliman);
+      config.start_deliman = false;
+  }
   this->config_=config;
   /* set the module rate */
 //  this->set_rate(config.rate_hz);
@@ -202,10 +219,15 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
         case kimble_nav_bedroom:
             ROS_INFO("[TASK2Actions] Navigation to bedroom");
             if (this->ActionNavigate(this->config_.bedroom_poi)){
+                this->kimble_state = kimble_say_wait_outside;
+            }
+            break;
+        case kimble_say_wait_outside:
+            ROS_INFO("[TASK2Actions] Saying TIAGo will wait outside");
+            if (this->ActionSaySentence("I will wait for you outside")){
                 this->kimble_state = kimble_go_outside;
             }
             break;
-            //TODO : add state that says TIAGo will wait outside
         case kimble_go_outside:
            ROS_INFO("[TASK2Actions] Navigation outside of bedroom");
             if (this->ActionNavigate(this->config_.bedroom_outside_poi)){

@@ -69,6 +69,7 @@ typedef enum {
 typedef enum {
   kimble_request_follow,
   kimble_nav_bedroom,
+  kimble_say_wait_outside,
   kimble_go_outside,
   kimble_move_head,
   kimble_wait_leave,

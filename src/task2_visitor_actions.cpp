@@ -7,7 +7,8 @@ speech("echo_module",this->module_nh.getNamespace()),
 nav_module("nav_module", this->module_nh.getNamespace()),
 gripper_module("gripper_module", this->module_nh.getNamespace()),
 head("head_module",this->module_nh.getNamespace()),
-image_diff("image_diff_module", this->module_nh.getNamespace())
+image_diff("image_diff_module", this->module_nh.getNamespace()),
+play_motion("play_motion_module", this->module_nh.getNamespace())
 {
   this->start_operation();
   this->state =  T2_INIT_ACTION;
@@ -80,6 +81,8 @@ bool CTask2VisitorActions::ActionSaySentence(const std::string & sentence){
 bool CTask2VisitorActions::GenericSayGoodbye (){
      return this->ActionSaySentence(this->config_.goodbye_sentence);
 }
+
+
 
 bool CTask2VisitorActions::ActionMoveHead(double pan_angle, double tilt_angle){
     static bool is_command_sent = false;
@@ -184,7 +187,7 @@ void CTask2VisitorActions::SetInitialStatesAllPersons(){
 
             this->kimble_state = kimble_request_follow;
             this->deliman_state = deliman_request_follow_kitchen;
-            this->postman_state = postman_extend_arm;
+            this->postman_state = postman_ask_deliver;
             this->plumber_state = plumber_ask_destination;
 }
 bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
@@ -317,15 +320,17 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
  bool CTask2VisitorActions::PostmanStateMachine(void){
      bool action_finished = false;
      switch (this->postman_state) {
-        case postman_extend_arm: //TODO : Is necessary ?
-            this->postman_state = postman_ask_deliver;
-            break;
+
         case postman_ask_deliver:
             ROS_INFO("[TASK2Actions]Requesting to deliver mail into hand");
             if (this->ActionSaySentence("Please put the mail in my hand")){
-                this->postman_state = postman_close_gripper;
-                this->gripper_module.close_grasp();
+                this->postman_state = postman_wait_timer;
             }
+            break;
+        case postman_wait_timer:
+            //TODO : Wait timer is done.
+            this->postman_state = postman_close_gripper;
+            this->gripper_module.close_grasp();
             break;
         case postman_close_gripper:
             ROS_INFO("[TASK2Actions]Closing gripper");
@@ -342,12 +347,24 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
         case postman_reach_bedroom:
             ROS_INFO("[TASK2Actions] Navigation to bedroom");
             if (this->ActionNavigate(this->config_.bedroom_poi)){
+                this->postman_state = postman_offer_gripper;
+                this->play_motion.execute_motion(OFFER_GRIPPER_MOTION);
+            }
+            break;
+        case postman_offer_gripper:
+            if (this->play_motion.is_finished()){
                 this->postman_state = postman_request_get_package;
             }
             break;
         case postman_request_get_package:
             ROS_INFO("[TASK2Actions] Request to take package");
             if (this->ActionSaySentence("Hello Granny Annie, please take the mail from my hand")){
+                this->postman_state = postman_open_gripper;
+                this->gripper_module.open();
+            }
+            break;
+        case postman_open_gripper:
+            if (this->gripper_module.is_finished()){
                 this->postman_state = postman_finish;
             }
             break;

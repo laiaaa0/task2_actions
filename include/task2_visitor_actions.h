@@ -39,6 +39,7 @@
 #include <tiago_modules/nav_module.h>
 #include <tiago_modules/gripper_module.h>
 #include <tiago_modules/head_module.h>
+#include <tiago_modules/play_motion_module.h>
 
 
 
@@ -79,12 +80,14 @@ typedef enum {
 } task2_kimble_states;
 
 typedef enum{
-    postman_extend_arm,
     postman_ask_deliver,
+    postman_wait_timer,
     postman_close_gripper,
     postman_say_goodbye,
     postman_reach_bedroom,
+    postman_offer_gripper,
     postman_request_get_package,
+    postman_open_gripper,
     postman_finish
 } task2_postman_states;
 
@@ -153,7 +156,9 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
 
     //Gripper module for the postman
     CGripperModule gripper_module;
-
+    //Play motions to offer gripper for the postman
+    CPlayMotionModule play_motion;
+    
     //Head module for the plumber and kimble
     CHeadModule head;
     CImageDiffModule image_diff;
@@ -192,6 +197,7 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
 
     bool SetPOIDependingOnCommand(const std::string & command_str);
 
+    bool ActionOfferGripper();
        /*!
           \brief Function that executes the behaviour for the current visitor
           \param

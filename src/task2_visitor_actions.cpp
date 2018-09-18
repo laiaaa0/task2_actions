@@ -325,12 +325,15 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
             ROS_INFO("[TASK2Actions]Requesting to deliver mail into hand");
             if (this->ActionSaySentence("Please put the mail in my hand")){
                 this->postman_state = postman_wait_timer;
+                this->timeout.start(ros::Duration(this->config_.wait_close_gripper));
             }
             break;
         case postman_wait_timer:
-            //TODO : Wait timer is done.
-            this->postman_state = postman_close_gripper;
-            this->gripper_module.close_grasp();
+            ROS_INFO("[TASK2Actions]Waiting before closing gripper");
+            if (this->timeout.timed_out()){
+                this->postman_state = postman_close_gripper;
+                this->gripper_module.close_grasp();
+            }
             break;
         case postman_close_gripper:
             ROS_INFO("[TASK2Actions]Closing gripper");

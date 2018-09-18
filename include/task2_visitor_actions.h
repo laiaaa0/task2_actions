@@ -146,7 +146,8 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
     CNavModule nav_module;
     //Text to speech module
     CTTSModule tts;
-
+    //Timeout module
+    CROSTimeout timeout;
 
     //Amazon echo modules for the plumber
     CEchoModule speech;
@@ -158,7 +159,7 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
     CGripperModule gripper_module;
     //Play motions to offer gripper for the postman
     CPlayMotionModule play_motion;
-    
+
     //Head module for the plumber and kimble
     CHeadModule head;
     CImageDiffModule image_diff;

@@ -5,8 +5,8 @@ project(task2_visitor_actions)
 # ********************************************************************
 #                 Add catkin additional components here
 # ********************************************************************
-find_package(catkin REQUIRED COMPONENTS iri_ros_tools  tiago_modules nen_modules 
-task2_recognition)
+find_package(catkin REQUIRED COMPONENTS iri_ros_tools  tiago_modules nen_modules
+task2_recognition log_modules)
 
 find_package(iriutils REQUIRED)
 
@@ -68,7 +68,7 @@ catkin_package(
 # ********************************************************************
  CATKIN_DEPENDS
  iri_ros_tools
-
+ log_modules
  nen_modules
  tiago_modules
  task2_recognition

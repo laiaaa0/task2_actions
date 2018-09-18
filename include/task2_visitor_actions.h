@@ -41,7 +41,7 @@
 #include <tiago_modules/head_module.h>
 #include <tiago_modules/play_motion_module.h>
 
-
+#include <log_modules/log_module.h>
 
 #include <nen_modules/echo_module.h>
 #include <nen_common_msgs/EchoCmdAction.h>
@@ -149,6 +149,8 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
     //Timeout module
     CROSTimeout timeout;
 
+    //Log modules
+    CLogModule logging;
     //Amazon echo modules for the plumber
     CEchoModule speech;
     nen_common_msgs::EchoCmdResult speech_command_;

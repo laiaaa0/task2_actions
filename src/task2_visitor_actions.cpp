@@ -8,6 +8,7 @@ nav_module("nav_module", this->module_nh.getNamespace()),
 gripper_module("gripper_module", this->module_nh.getNamespace()),
 head("head_module",this->module_nh.getNamespace()),
 image_diff("image_diff_module", this->module_nh.getNamespace()),
+logging("log_module", this->module_nh.getNamespace()),
 play_motion("play_motion_module", this->module_nh.getNamespace())
 {
   this->start_operation();
@@ -54,6 +55,7 @@ bool CTask2VisitorActions::ActionSaySentence(const std::string & sentence){
   static bool is_sentence_sent = false;
   if (!is_sentence_sent){
     tts.say(sentence);
+    this->logging.start_logging_audio();
     is_sentence_sent = true;
   }
   else {
@@ -62,7 +64,7 @@ bool CTask2VisitorActions::ActionSaySentence(const std::string & sentence){
       if (tts.get_status()==TTS_MODULE_SUCCESS or this->current_action_retries_ >= this->config_.max_action_retries){
         is_sentence_sent  = false;
         this->current_action_retries_ = 0;
-	ROS_INFO("[TASK2] ActionSaySentence - Returning TRUE");
+        this->logging.stop_logging_audio();
         return true;
 
       }
@@ -386,6 +388,7 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
             ROS_INFO("[TASK2Actions] Asking for destination");
             if (this->ActionSaySentence(this->config_.sentence_which_room)){
                 this->plumber_state = plumber_listen_destination;
+                this->logging.start_logging_audio();
                 this->speech.listen();
             }
             break;
@@ -396,6 +399,7 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
                     this->speech_command_ = this->speech.get_result();
                     if (this->speech_command_.cmd.cmd_id == this->config_.speech_destination){
                         if (SetPOIDependingOnCommand(this->speech_command_.cmd.text_seq[0])){
+                            this->logging.stop_logging_audio();
                             this->plumber_state = plumber_request_follow;
                         }
                     }

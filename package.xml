@@ -44,11 +44,15 @@
   <build_depend>tiago_modules</build_depend>
   <build_depend>nen_modules</build_depend>
   <build_depend>task2_recognition</build_depend>
+  <build_depend>log_modules</build_depend>
+
 
   <run_depend>iri_ros_tools</run_depend>
   <run_depend>tiago_modules</run_depend>
   <run_depend>nen_modules</run_depend>
   <run_depend>task2_recognition</run_depend>
+  <run_depend>log_modules</run_depend>
+
 
 
 

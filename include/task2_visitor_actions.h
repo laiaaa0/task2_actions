@@ -88,6 +88,7 @@ typedef enum{
     postman_offer_gripper,
     postman_request_get_package,
     postman_open_gripper,
+    postman_arm_home,
     postman_finish
 } task2_postman_states;
 

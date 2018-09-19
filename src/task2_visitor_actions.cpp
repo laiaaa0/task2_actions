@@ -370,6 +370,12 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
             break;
         case postman_open_gripper:
             if (this->gripper_module.is_finished()){
+                this->postman_state = postman_arm_home;
+                this->play_motion.execute_motion(HOME_MOTION);
+            }
+            break;
+        case postman_arm_home:
+            if (this->play_motion.is_finished()){
                 this->postman_state = postman_finish;
             }
             break;

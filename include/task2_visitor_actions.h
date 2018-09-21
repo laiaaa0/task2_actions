@@ -40,6 +40,7 @@
 #include <tiago_modules/gripper_module.h>
 #include <tiago_modules/head_module.h>
 #include <tiago_modules/play_motion_module.h>
+#include <tiago_modules/move_platform_module.h>
 
 #include <log_modules/log_module.h>
 
@@ -69,6 +70,7 @@ typedef enum {
 
 typedef enum {
   kimble_request_follow,
+  kimble_turn_around_door,
   kimble_nav_bedroom,
   kimble_say_wait_outside,
   kimble_go_outside,
@@ -94,6 +96,7 @@ typedef enum{
 
 typedef enum {
     deliman_request_follow_kitchen,
+    deliman_turn_around_door,
     deliman_guide_kitchen,
     deliman_request_deliver,
     deliman_request_follow_door,
@@ -106,6 +109,7 @@ typedef enum {
     plumber_ask_destination,
     plumber_listen_destination,
     plumber_request_follow,
+    plumber_turn_around_door,
     plumber_nav_poi,
     plumber_move_head,
     plumber_wait_leave,
@@ -167,6 +171,7 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
     CHeadModule head;
     CImageDiffModule image_diff;
 
+    CMovePlatformModule move_platform;
     //Auxiliary variables to start task or ring bell from the dynamic_reconfigure
 
     bool cancel_pending_;

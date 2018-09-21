@@ -9,7 +9,8 @@ gripper_module("gripper_module", this->module_nh.getNamespace()),
 head("head_module",this->module_nh.getNamespace()),
 image_diff("image_diff_module", this->module_nh.getNamespace()),
 logging("log_module", this->module_nh.getNamespace()),
-play_motion("play_motion_module", this->module_nh.getNamespace())
+play_motion("play_motion_module", this->module_nh.getNamespace()),
+move_platform("move_platform",this->module_nh.getNamespace())
 {
   this->start_operation();
   this->state =  T2_INIT_ACTION;
@@ -218,9 +219,14 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
          case kimble_request_follow:
             ROS_INFO("[TASK2Actions] Requesting to follow");
             if (this->ActionSaySentence("Please follow me to the bedroom")){
-                this->kimble_state = kimble_nav_bedroom;
+                this->kimble_state = kimble_turn_around_door;
+                this->move_platform.orientate_platform(this->config_.angle_180);
             }
             break;
+        case kimble_turn_around_door:
+            if (this->move_platform.is_finished()){
+                this->kimble_state = kimble_nav_bedroom;
+            }
         case kimble_nav_bedroom:
             ROS_INFO("[TASK2Actions] Navigation to bedroom");
             if (this->ActionNavigate(this->config_.bedroom_poi)){
@@ -280,6 +286,13 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
          case deliman_request_follow_kitchen:
 	    ROS_INFO("[TASK2Actions] Request follow");
             if (this->ActionSaySentence("Please follow me to the kitchen")){
+                this->deliman_state = deliman_turn_around_door;
+                this->move_platform.orientate_platform(this->config_.angle_180);
+            }
+            break;
+         case deliman_turn_around_door:
+            ROS_INFO("[Task2Actions] Turning around");
+            if (this->move_platform.is_finished()){
                 this->deliman_state = deliman_guide_kitchen;
             }
             break;
@@ -415,11 +428,18 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
         case plumber_request_follow:
             ROS_INFO("[TASK2Actions] Request to follow to the room");
             if (this->ActionSaySentence("Please follow me to the "+this->plumber_destination_name_)){
+                this->plumber_state = plumber_turn_around_door;
+                this->move_platform.orientate_platform(this->config_.angle_180);
+            }
+            break;
+        case plumber_turn_around_door:
+            if (this->move_platform.is_finished()){
                 this->plumber_state = plumber_nav_poi;
             }
             break;
         case plumber_nav_poi:
             ROS_INFO("[TASK2Actions] Navigation to destination");
+            //if (this->ActionGuide())
             if (this->ActionNavigate(this->plumber_destination_poi_)){
                 this->plumber_state = plumber_wait_leave;
             }

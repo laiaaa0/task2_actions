@@ -47,6 +47,11 @@
 #include <nen_modules/echo_module.h>
 #include <nen_common_msgs/EchoCmdAction.h>
 #include <nen_modules/image_diff_module.h>
+#include <nen_modules/guiding_module.h>
+#include <nen_modules/following_module.h>
+
+#include <spencer_tracking_msgs/TrackedPersons.h>
+#include <spencer_tracking_msgs/TrackedPerson.h>
 
 
 #include <task2_visitor_actions/Task2VisitorActionsConfig.h>
@@ -67,6 +72,10 @@ typedef enum {
 } task2_action_states;
 
 
+typedef enum {
+    GUIDING_MODE,
+    FOLLOWING_MODE
+} MOVING_MODE;
 
 typedef enum {
   kimble_request_follow,
@@ -174,6 +183,38 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
     CMovePlatformModule move_platform;
     //Auxiliary variables to start task or ring bell from the dynamic_reconfigure
 
+    //GUIDING AND FOLLOWING INTERFACE
+
+       //Guiding module
+       CGuidingModule guiding;
+
+       std::vector<spencer_tracking_msgs::TrackedPerson> tracked_persons_rear_;
+       ros::Subscriber spencer_tracked_people_rear_subscriber_;
+       void spencer_tracked_people_rear_callback(const spencer_tracking_msgs::TrackedPersons::ConstPtr& msg);
+       pthread_mutex_t spencer_tracked_people_rear_mutex_;
+       void spencer_tracked_people_rear_mutex_enter(void);
+       void spencer_tracked_people_rear_mutex_exit(void);
+
+       bool headsearch_callback_rear(const int id);
+
+       //Following module
+
+       std::vector<spencer_tracking_msgs::TrackedPerson> tracked_persons_front_;
+
+       CFollowingModule following;
+       /*
+       ros::Subscriber spencer_tracked_people_front_subscriber_;
+       void spencer_tracked_people_front_callback(const spencer_tracking_msgs::TrackedPersons::ConstPtr& msg);
+       pthread_mutex_t spencer_tracked_people_front_mutex_;
+       void spencer_tracked_people_front_mutex_enter(void);
+       void spencer_tracked_people_front_mutex_exit(void);
+
+       bool headsearch_callback_front(const int id);
+       */
+
+
+
+
     bool cancel_pending_;
     bool start_actions_;
     bool is_action_finished_;
@@ -201,6 +242,8 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
     */
     bool ActionSaySentence(const std::string & sentence);
     bool ActionNavigate(std::string & POI);
+    bool ActionGuide(std::string & POI);
+
     bool GenericSayGoodbye();
     bool ActionMoveHead(double pan_angle, double tilt_angle);
 
@@ -214,9 +257,11 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
           \post  new step of the action for the visitor_ is done
           \return True when the action is finished.
        */
-       bool ExecuteBehaviorForVisitor(const Person & person);
+     bool ExecuteBehaviorForVisitor(const Person & person);
      void SetInitialStatesAllPersons();
 
+     double DistanceFromPerson(const geometry_msgs::Point & position);
+     int DecideMainPersonID(const MOVING_MODE move_type);
 
 
   protected:

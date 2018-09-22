@@ -10,12 +10,20 @@ head("head_module",this->module_nh.getNamespace()),
 image_diff("image_diff_module", this->module_nh.getNamespace()),
 logging("log_module", this->module_nh.getNamespace()),
 play_motion("play_motion_module", this->module_nh.getNamespace()),
-move_platform("move_platform",this->module_nh.getNamespace())
+move_platform("move_platform",this->module_nh.getNamespace()),
+guiding("guiding_module", this->module_nh.getNamespace()),
+following("following_module", this->module_nh.getNamespace())
+
+
 {
   this->start_operation();
   this->state =  T2_INIT_ACTION;
   this->current_action_retries_ = 0;
 
+  this->spencer_tracked_people_rear_subscriber_ = this->module_nh.subscribe("current_id", 1, &CTask2VisitorActions::spencer_tracked_people_rear_callback, this);
+  pthread_mutex_init(&this->spencer_tracked_people_rear_mutex_,NULL);
+  boost::function<bool (int)> cb (boost::bind(&CTask2VisitorActions::headsearch_callback_rear, this, _1));
+  this->guiding.set_callback(cb);
 
 
 }
@@ -25,6 +33,80 @@ CTask2VisitorActions::~CTask2VisitorActions(void)
 {
   // [free dynamic memory]
 }
+
+void CTask2VisitorActions::spencer_tracked_people_rear_callback(const spencer_tracking_msgs::TrackedPersons::ConstPtr& msg){
+    ROS_DEBUG("GuidingClientAlgNode::spencer_tracked_people_callback: New Message Received");
+    tracked_persons_rear_ = msg->tracks;
+}
+
+bool CTask2VisitorActions::headsearch_callback_rear(const int id){
+    ROS_INFO("[GuidingClient] Callback head search");
+    for (int i = 0; i < this->tracked_persons_rear_.size(); ++i) {
+      if (this->tracked_persons_rear_[i].track_id == id and this->tracked_persons_rear_[i].is_matched)
+        return true;
+    }
+    return false;
+}
+
+
+bool CTask2VisitorActions::ActionGuide(std::string & POI){
+  static bool is_poi_sent = false;
+  if (!is_poi_sent){
+    int id = DecideMainPersonID(GUIDING_MODE);
+    guiding.start(id, POI);
+    is_poi_sent = true;
+  }
+  if (guiding.is_finished()){
+    if (guiding.get_status()==GUIDING_MODULE_SUCCESS or this->current_action_retries_ >= this->config_.max_action_retries){
+      is_poi_sent  = false;
+      this->current_action_retries_ = 0;
+      return true;
+
+    }
+    else {
+      ROS_INFO ("[TASK2] Guiding module finished unsuccessfully. Retrying");
+      is_poi_sent  = false;
+      this->current_action_retries_ ++;
+      return false;
+    }
+  }
+  return false;
+}
+
+double CTask2VisitorActions::DistanceFromPerson(const geometry_msgs::Point & position){
+    return sqrt(pow(position.x, 2.0) + pow(position.y, 2.0));
+}
+
+int CTask2VisitorActions::DecideMainPersonID(const MOVING_MODE move_type){
+    std::vector<spencer_tracking_msgs::TrackedPerson> all_detections;
+    if (move_type == GUIDING_MODE){
+        all_detections = tracked_persons_rear_;
+    }
+    else if (move_type == FOLLOWING_MODE){
+        all_detections = tracked_persons_front_;
+    }
+    if (all_detections.size() < 1 ){
+        return -1;
+    }
+
+    if (all_detections.size() == 1 ){
+        return all_detections[0].track_id;
+    }
+    else {
+        double min_distance = this->DistanceFromPerson(all_detections[0].pose.pose.position);
+        int min_id = 0;
+        for (size_t i = 0; i < all_detections.size(); i++) {
+            double current_distance = this->DistanceFromPerson(all_detections[i].pose.pose.position);
+            if (current_distance < min_distance){
+                    min_distance = current_distance;
+                    min_id = i;
+            }
+        }
+        return min_id;
+    }
+}
+
+
 
 bool CTask2VisitorActions::ActionNavigate(std::string & POI){
   static bool is_poi_sent = false;

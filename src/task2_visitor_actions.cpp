@@ -11,7 +11,7 @@ image_diff("image_diff_module", this->module_nh.getNamespace()),
 logging("log_module", this->module_nh.getNamespace()),
 play_motion("play_motion_module", this->module_nh.getNamespace()),
 move_platform("move_platform",this->module_nh.getNamespace()),
-guiding("guiding_module", this->module_nh.getNamespace()),
+guiding("guiding", this->module_nh.getNamespace()),
 following("following_module", this->module_nh.getNamespace())
 
 

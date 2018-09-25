@@ -117,7 +117,6 @@ typedef enum {
 typedef enum {
     plumber_ask_destination,
     plumber_listen_destination,
-    plumber_request_follow,
     plumber_turn_around_door,
     plumber_nav_poi,
     plumber_move_head,
@@ -168,7 +167,6 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
     //Amazon echo modules for the plumber
     CEchoModule speech;
     nen_common_msgs::EchoCmdResult speech_command_;
-    std::string plumber_destination_name_;
     std::string plumber_destination_poi_;
 
     //Gripper module for the postman

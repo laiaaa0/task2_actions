@@ -306,9 +306,12 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
             }
             break;
         case kimble_turn_around_door:
+            ROS_INFO("[TASK2Actions] Turn around");
             if (this->move_platform.is_finished()){
-                this->kimble_state = kimble_nav_bedroom;
+                if (this->move_platform.get_status() == MOVE_PLATFORM_MODULE_SUCCESS)
+                    this->kimble_state = kimble_nav_bedroom;
             }
+            break;
         case kimble_nav_bedroom:
             ROS_INFO("[TASK2Actions] Navigation to bedroom");
             if (this->ActionNavigate(this->config_.bedroom_poi)){
@@ -501,20 +504,16 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
                     if (this->speech_command_.cmd.cmd_id == this->config_.speech_destination){
                         if (SetPOIDependingOnCommand(this->speech_command_.cmd.text_seq[0])){
                             this->logging.stop_logging_audio();
-                            this->plumber_state = plumber_request_follow;
+                            this->plumber_state = plumber_turn_around_door;
+                            this->move_platform.orientate_platform(this->config_.angle_180);
                         }
                     }
                 }
             }
             break;
-        case plumber_request_follow:
-            ROS_INFO("[TASK2Actions] Request to follow to the room");
-            if (this->ActionSaySentence("Please follow me to the "+this->plumber_destination_name_)){
-                this->plumber_state = plumber_turn_around_door;
-                this->move_platform.orientate_platform(this->config_.angle_180);
-            }
-            break;
+
         case plumber_turn_around_door:
+            ROS_INFO("[TASK2Actions] Turn around");
             if (this->move_platform.is_finished()){
                 this->plumber_state = plumber_nav_poi;
             }
@@ -562,7 +561,6 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
 
 bool CTask2VisitorActions::SetPOIDependingOnCommand(const std::string & command_str){
     bool recognised_command = true;
-    this->plumber_destination_name_ = command_str;
     if (command_str == this->config_.bathroom_name){
         this->plumber_destination_poi_ = config_.bathroom_poi;
     }

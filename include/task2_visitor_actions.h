@@ -68,8 +68,13 @@
 typedef enum {
     T2_INIT_ACTION,
     T2_EXECUTING,
-    T2_END_ACTION
-} task2_action_states;
+    T2_END_ACTION} task2_action_states;
+
+typedef enum {T2_ACTIONS_MODULE_RUNNING,
+              T2_ACTIONS_MODULE_SUCCESS,
+              T2_ACTIONS_MODULE_STOPPED,
+              T2_ACTIONS_MODULE_FAILURE} t2_action_module_status_t;
+
 
 
 typedef enum {
@@ -229,7 +234,7 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
     //State machines
     task2_action_states state;
 
-
+    t2_action_module_status_t status;
 
     /*!
        \brief Function that handles the tts module so that speaking is easier

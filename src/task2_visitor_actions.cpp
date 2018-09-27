@@ -18,6 +18,7 @@ following("following_module", this->module_nh.getNamespace())
 {
   this->start_operation();
   this->state =  T2_INIT_ACTION;
+  this->status = T2_ACTIONS_MODULE_SUCCESS;
   this->current_action_retries_ = 0;
 
   this->spencer_tracked_people_rear_subscriber_ = this->module_nh.subscribe("current_id_rear", 1, &CTask2VisitorActions::spencer_tracked_people_rear_callback, this);
@@ -71,6 +72,7 @@ bool CTask2VisitorActions::ActionGuide(std::string & POI){
     int id = DecideMainPersonID(GUIDING_MODE);
     if (id == -1){
         ROS_ERROR("No person detected"); //TODO es quedara en loop infinit
+        return false;
     }
     else {
         guiding.start(id, POI);
@@ -97,7 +99,7 @@ bool CTask2VisitorActions::ActionGuide(std::string & POI){
 bool CTask2VisitorActions::ActionFollow(){
   static bool is_command_sent = false;
   if (!is_command_sent){
-    int id = DecideMainPersonID(GUIDING_MODE);
+    int id = DecideMainPersonID(FOLLOWING_MODE);
     if (id == -1){
         ROS_ERROR("No person detected"); //TODO es quedara en loop infinit
     }
@@ -253,6 +255,7 @@ void CTask2VisitorActions::StartActions(Person p){
     this->is_action_finished_ = false;
     this->visitor_ = p;
     this->start_actions_ = true;
+    this->status = T2_ACTIONS_MODULE_RUNNING;
     this->SetInitialStatesAllPersons();
 }
 
@@ -260,6 +263,17 @@ void CTask2VisitorActions::StartActions(Person p){
 
 void CTask2VisitorActions::state_machine(void)
 {
+    if (this->cancel_pending_){
+        this->cancel_pending_ = false;
+        this->state = T2_END_ACTION;
+        this->tts.stop();
+        this->nav_module.stop();
+        this->head.stop();
+        this->move_platform.stop();
+        this->gripper_module.stop();
+        this->play_motion.stop();
+        this->status = T2_ACTIONS_MODULE_STOPPED;
+    }
     switch (this->state) {
         case T2_INIT_ACTION:
             if (this->start_actions_){
@@ -270,7 +284,7 @@ void CTask2VisitorActions::state_machine(void)
             break;
         case T2_EXECUTING:
             if (this->ExecuteBehaviorForVisitor(this->visitor_)){
- 		this->is_action_finished_ = true;
+ 		        this->is_action_finished_ = true;
                 this->state = T2_END_ACTION;
             }
             break;
@@ -322,7 +336,6 @@ task2_action_states CTask2VisitorActions::get_state(void){
 }
 
 void CTask2VisitorActions::SetInitialStatesAllPersons(){
-
             this->kimble_state = kimble_request_follow;
             this->deliman_state = deliman_request_follow_kitchen;
             this->postman_state = postman_ask_deliver;
@@ -413,6 +426,7 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
             break;
         case kimble_finish:
             ROS_INFO("[TASK2Actions] END");
+            this->status = T2_ACTIONS_MODULE_SUCCESS;
             action_finished = true;
             break;
      }
@@ -464,10 +478,11 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
          case deliman_say_goodbye:
 	    ROS_INFO("[TASK2Actions] Say goodbye");
             if (this->GenericSayGoodbye()){
-		this->deliman_state = deliman_finish;
+		              this->deliman_state = deliman_finish;
             }
             break;
          case deliman_finish:
+            this->status = T2_ACTIONS_MODULE_SUCCESS;
             action_finished = true;
             break;
      }
@@ -535,6 +550,7 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
             break;
         case postman_finish:
             ROS_INFO("[TASK2Actions]END");
+            this->status = T2_ACTIONS_MODULE_SUCCESS;
             action_finished = true;
             break;
      }
@@ -609,6 +625,7 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
             break;
         case plumber_finish:
             ROS_INFO("[TASK2Actions] END");
+            this->status = T2_ACTIONS_MODULE_SUCCESS;
             action_finished = true;
             break;
      }

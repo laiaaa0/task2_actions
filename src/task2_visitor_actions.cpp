@@ -20,11 +20,15 @@ following("following_module", this->module_nh.getNamespace())
   this->state =  T2_INIT_ACTION;
   this->current_action_retries_ = 0;
 
-  this->spencer_tracked_people_rear_subscriber_ = this->module_nh.subscribe("current_id", 1, &CTask2VisitorActions::spencer_tracked_people_rear_callback, this);
+  this->spencer_tracked_people_rear_subscriber_ = this->module_nh.subscribe("current_id_rear", 1, &CTask2VisitorActions::spencer_tracked_people_rear_callback, this);
   pthread_mutex_init(&this->spencer_tracked_people_rear_mutex_,NULL);
-  boost::function<bool (int)> cb (boost::bind(&CTask2VisitorActions::headsearch_callback_rear, this, _1));
-  this->guiding.set_callback(cb);
+  boost::function<bool (int)> cb_rear (boost::bind(&CTask2VisitorActions::headsearch_callback_rear, this, _1));
+  this->guiding.set_callback(cb_rear);
 
+  this->spencer_tracked_people_front_subscriber_ = this->module_nh.subscribe("current_id_front", 1, &CTask2VisitorActions::spencer_tracked_people_front_callback, this);
+  pthread_mutex_init(&this->spencer_tracked_people_front_mutex_,NULL);
+  boost::function<bool (int)> cb_front (boost::bind(&CTask2VisitorActions::headsearch_callback_front, this, _1));
+  this->following.set_callback(cb_front);
 
 }
 
@@ -36,7 +40,11 @@ CTask2VisitorActions::~CTask2VisitorActions(void)
 
 void CTask2VisitorActions::spencer_tracked_people_rear_callback(const spencer_tracking_msgs::TrackedPersons::ConstPtr& msg){
     ROS_DEBUG("GuidingClientAlgNode::spencer_tracked_people_callback: New Message Received");
-    tracked_persons_rear_ = msg->tracks;
+    this->tracked_persons_rear_ = msg->tracks;
+}
+void CTask2VisitorActions::spencer_tracked_people_front_callback(const spencer_tracking_msgs::TrackedPersons::ConstPtr& msg){
+    ROS_DEBUG("GuidingClientAlgNode::spencer_tracked_people_callback: New Message Received");
+    this->tracked_persons_front_ = msg->tracks;
 }
 
 bool CTask2VisitorActions::headsearch_callback_rear(const int id){
@@ -48,13 +56,26 @@ bool CTask2VisitorActions::headsearch_callback_rear(const int id){
     return false;
 }
 
+bool CTask2VisitorActions::headsearch_callback_front(const int id){
+    ROS_INFO("[GuidingClient] Callback head search");
+    for (int i = 0; i < this->tracked_persons_front_.size(); ++i) {
+      if (this->tracked_persons_front_[i].track_id == id and this->tracked_persons_front_[i].is_matched)
+        return true;
+    }
+    return false;
+}
 
 bool CTask2VisitorActions::ActionGuide(std::string & POI){
   static bool is_poi_sent = false;
   if (!is_poi_sent){
     int id = DecideMainPersonID(GUIDING_MODE);
-    guiding.start(id, POI);
-    is_poi_sent = true;
+    if (id == -1){
+        ROS_ERROR("No person detected"); //TODO es quedara en loop infinit
+    }
+    else {
+        guiding.start(id, POI);
+        is_poi_sent = true;
+    }
   }
   if (guiding.is_finished()){
     if (guiding.get_status()==GUIDING_MODULE_SUCCESS or this->current_action_retries_ >= this->config_.max_action_retries){
@@ -72,6 +93,36 @@ bool CTask2VisitorActions::ActionGuide(std::string & POI){
   }
   return false;
 }
+
+bool CTask2VisitorActions::ActionFollow(){
+  static bool is_command_sent = false;
+  if (!is_command_sent){
+    int id = DecideMainPersonID(GUIDING_MODE);
+    if (id == -1){
+        ROS_ERROR("No person detected"); //TODO es quedara en loop infinit
+    }
+    else {
+        following.start(id);
+        is_command_sent = true;
+    }
+  }
+  if (following.is_finished()){
+    if (following.get_status()==FOLLOWING_MODULE_SUCCESS or this->current_action_retries_ >= this->config_.max_action_retries){
+      is_command_sent  = false;
+      this->current_action_retries_ = 0;
+      return true;
+
+    }
+    else {
+      ROS_INFO ("[TASK2] Following module finished unsuccessfully. Retrying");
+      is_command_sent  = false;
+      this->current_action_retries_ ++;
+      return false;
+    }
+  }
+  return false;
+}
+
 
 double CTask2VisitorActions::DistanceFromPerson(const geometry_msgs::Point & position){
     return sqrt(pow(position.x, 2.0) + pow(position.y, 2.0));
@@ -123,7 +174,9 @@ bool CTask2VisitorActions::ActionNavigate(std::string & POI){
 
     }
     else {
-      ROS_INFO ("[TASK2] Nav module finished unsuccessfully. Retrying");
+      ROS_INFO ("[TASK2] Nav module finished unsuccessfully. Retrying %d of %d",
+                this->current_action_retries_,
+                this->config_.max_action_retries);
       is_poi_sent  = false;
       this->current_action_retries_ ++;
       return false;

@@ -200,7 +200,7 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
        std::vector<spencer_tracking_msgs::TrackedPerson> tracked_persons_front_;
 
        CFollowingModule following;
-       /*
+
        ros::Subscriber spencer_tracked_people_front_subscriber_;
        void spencer_tracked_people_front_callback(const spencer_tracking_msgs::TrackedPersons::ConstPtr& msg);
        pthread_mutex_t spencer_tracked_people_front_mutex_;
@@ -208,7 +208,7 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
        void spencer_tracked_people_front_mutex_exit(void);
 
        bool headsearch_callback_front(const int id);
-       */
+
 
 
 
@@ -241,6 +241,7 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
     bool ActionSaySentence(const std::string & sentence);
     bool ActionNavigate(std::string & POI);
     bool ActionGuide(std::string & POI);
+    bool ActionFollow();
 
     bool GenericSayGoodbye();
     bool ActionMoveHead(double pan_angle, double tilt_angle);

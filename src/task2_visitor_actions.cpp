@@ -103,18 +103,28 @@ bool CTask2VisitorActions::ActionFollow(){
     int id = DecideMainPersonID(FOLLOWING_MODE);
     if (id == -1){
         ROS_ERROR("No person detected"); //TODO es quedara en loop infinit
+        return false;
     }
     else {
         following.start(id);
         is_command_sent = true;
+        this->speech.listen();
     }
   }
-  if (following.is_finished()){
-    if (following.get_status()==FOLLOWING_MODULE_SUCCESS or this->current_action_retries_ >= this->config_.max_action_retries){
-      is_command_sent  = false;
-      this->current_action_retries_ = 0;
-      return true;
-
+  if (this->speech.is_finished()){
+    if (this->speech.get_status()==ECHO_MODULE_SUCCESS or this->current_action_retries_ >= this->config_.max_action_retries){
+      int speech_cmd_id = this->speech.get_result().cmd.cmd_id;
+      if (speech_cmd_id == this->config_.speech_stop_follow){
+          this->following.stop(); //TODO : Check is finished ??
+          is_command_sent  = false;
+          this->current_action_retries_ = 0;
+          return true;
+      }
+      else {
+          is_command_sent  = false;
+          this->current_action_retries_ ++;
+          return false;
+      }
     }
     else {
       ROS_INFO ("[TASK2] Following module finished unsuccessfully. Retrying");
@@ -406,7 +416,6 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
         case kimble_nav_bedroom:
             ROS_INFO("[TASK2Actions] Navigation to bedroom");
             if (this->ActionGuide(this->config_.bedroom_poi)){
-            //if (this->ActionNavigate(this->config_.bedroom_poi)){
                 this->kimble_state = kimble_say_wait_outside;
             }
             break;
@@ -439,7 +448,7 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
             break;
         case kimble_nav_door:
             ROS_INFO("[TASK2Actions] Navigation to door");
-            if (this->ActionNavigate(this->config_.door_poi)){
+            if (this->ActionFollow()){
                 this->kimble_state = kimble_say_goodbye;
             }
             break;
@@ -476,7 +485,6 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
          case deliman_guide_kitchen:
 	    ROS_INFO("[TASK2Actions] Navigate kitchen");
             if (this->ActionGuide(this->config_.kitchen_poi)){
-            //if (this->ActionNavigate(this->config_.kitchen_poi)){
                 this->deliman_state = deliman_request_deliver;
             }
             break;
@@ -494,8 +502,7 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
             break;
          case deliman_guide_door:
 	        ROS_INFO("[TASK2Actions] Navigate to door");
-            //if (this->ActionGuide(this->config_.door_poi)){
-             if (this->ActionNavigate(this->config_.door_poi)){
+            if (this->ActionGuide(this->config_.door_poi)){
                  this->deliman_state = deliman_say_goodbye;
              }
             break;
@@ -615,8 +622,7 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
             break;
         case plumber_nav_poi:
             ROS_INFO("[TASK2Actions] Navigation to destination");
-            //if (this->ActionGuide())
-            if (this->ActionNavigate(this->plumber_destination_poi_)){
+            if (this->ActionGuide(this->plumber_destination_poi_)){
                 this->plumber_state = plumber_wait_leave;
             }
             break;
@@ -636,7 +642,7 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
             break;
         case plumber_nav_door:
             ROS_INFO("[TASK2Actions] Navigation to door");
-            if (this->ActionNavigate(this->config_.door_poi)){
+            if (this->ActionFollow()){
                 this->plumber_state = plumber_say_goodbye;
             }
             break;

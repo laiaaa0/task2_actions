@@ -534,7 +534,7 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
             ROS_INFO("[TASK2Actions]Waiting before closing gripper");
             if (this->timeout.timed_out()){
                 this->postman_state = postman_close_gripper;
-                this->gripper_module.close_grasp();
+                this->gripper_module.close();
             }
             break;
         case postman_close_gripper:

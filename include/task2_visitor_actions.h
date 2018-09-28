@@ -37,7 +37,7 @@
 
 #include <tiago_modules/tts_module.h>
 #include <tiago_modules/nav_module.h>
-#include <tiago_modules/gripper_module.h>
+#include <nen_modules/nen_gripper_module.h>
 #include <tiago_modules/head_module.h>
 #include <tiago_modules/play_motion_module.h>
 #include <tiago_modules/move_platform_module.h>
@@ -49,6 +49,7 @@
 #include <nen_modules/image_diff_module.h>
 #include <nen_modules/guiding_module.h>
 #include <nen_modules/following_module.h>
+#include <nen_modules/nen_gripper_module.h>
 
 #include <spencer_tracking_msgs/TrackedPersons.h>
 #include <spencer_tracking_msgs/TrackedPerson.h>
@@ -175,7 +176,7 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
     std::string plumber_destination_poi_;
 
     //Gripper module for the postman
-    CGripperModule gripper_module;
+    CNenGripperModule gripper_module;
     //Play motions to offer gripper for the postman
     CPlayMotionModule play_motion;
 

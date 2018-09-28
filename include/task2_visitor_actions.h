@@ -247,6 +247,7 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
     bool ActionNavigate(std::string & POI);
     bool ActionGuide(std::string & POI);
     bool ActionFollow();
+    bool ActionTurnAround();
 
     bool GenericSayGoodbye();
     bool ActionMoveHead(double pan_angle, double tilt_angle);

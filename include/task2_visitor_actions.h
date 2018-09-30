@@ -97,15 +97,21 @@ typedef enum {
 } task2_kimble_states;
 
 typedef enum{
+    postman_init,
+    postman_wait_close_gripper_1,
+    postman_wait_offer_gripper_1,
+    postman_wait_open_gripper_1,
     postman_ask_deliver,
     postman_wait_timer,
-    postman_close_gripper,
+    postman_close_gripper_2,
     postman_say_goodbye,
+    postman_arm_home_1,
     postman_reach_bedroom,
-    postman_offer_gripper,
+    postman_wait_offer_gripper_2,
     postman_request_get_package,
-    postman_open_gripper,
-    postman_arm_home,
+    postman_open_gripper_2,
+    postman_close_gripper_3,
+    postman_arm_home_2,
     postman_finish
 } task2_postman_states;
 

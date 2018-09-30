@@ -375,7 +375,7 @@ task2_action_states CTask2VisitorActions::get_state(void){
 void CTask2VisitorActions::SetInitialStatesAllPersons(){
             this->kimble_state = kimble_request_follow;
             this->deliman_state = deliman_request_follow_kitchen;
-            this->postman_state = postman_ask_deliver;
+            this->postman_state = postman_init;
             this->plumber_state = plumber_ask_destination;
 }
 bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
@@ -522,7 +522,37 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
  bool CTask2VisitorActions::PostmanStateMachine(void){
      bool action_finished = false;
      switch (this->postman_state) {
-
+         case postman_init:
+            ROS_INFO("[TASK2Actions]Postman init");
+            this->gripper_module.close();
+            this->postman_state = postman_wait_close_gripper_1;
+            break;
+        case postman_wait_close_gripper_1:
+            ROS_INFO("[TASK2Actions]Postman close gripper");
+            if (this->gripper_module.is_finished()){
+                if (this->gripper_module.get_status() == NEN_GRIPPER_MODULE_SUCCESS){
+                    this->play_motion.execute_motion(OFFER_GRIPPER_MOTION);
+                    this->postman_state = postman_wait_offer_gripper_1;
+                }
+            }
+            break;
+        case postman_wait_offer_gripper_1:
+            ROS_INFO("[TASK2Actions] Postman wait offer gripper");
+            if (this->play_motion.is_finished()){
+                if (this->play_motion.get_status() == PLAY_MOTION_MODULE_SUCCESS){
+                        this->gripper_module.open();
+                        this->postman_state = postman_wait_open_gripper_1;
+                }
+            }
+            break;
+        case postman_wait_open_gripper_1:
+            ROS_INFO("[TASK2Actions]Postman open gripper");
+            if (this->gripper_module.is_finished()){
+                if (this->gripper_module.get_status() == NEN_GRIPPER_MODULE_SUCCESS){
+                        this->postman_state = postman_ask_deliver;
+                }
+            }
+            break;
         case postman_ask_deliver:
             ROS_INFO("[TASK2Actions]Requesting to deliver mail into hand");
             if (this->ActionSaySentence("Please put the mail in my hand")){
@@ -533,11 +563,11 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
         case postman_wait_timer:
             ROS_INFO("[TASK2Actions]Waiting before closing gripper");
             if (this->timeout.timed_out()){
-                this->postman_state = postman_close_gripper;
+                this->postman_state = postman_close_gripper_2;
                 this->gripper_module.close();
             }
             break;
-        case postman_close_gripper:
+        case postman_close_gripper_2:
             ROS_INFO("[TASK2Actions]Closing gripper");
             if (this->gripper_module.is_finished()){
                 this->postman_state = postman_say_goodbye;
@@ -546,17 +576,26 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
         case postman_say_goodbye:
             ROS_INFO("[TASK2Actions] Saying goodbye");
             if (this->GenericSayGoodbye()){
-                this->postman_state = postman_reach_bedroom;
+                this->play_motion.execute_motion(HOME_MOTION);
+                this->postman_state = postman_arm_home_1;
+            }
+            break;
+        case postman_arm_home_1:
+            ROS_INFO("[TASK2Actions] Moving arm to home");
+            if (this->play_motion.is_finished()){
+                if (this->play_motion.get_status() == PLAY_MOTION_MODULE_SUCCESS){
+                        this->postman_state = postman_reach_bedroom;
+                }
             }
             break;
         case postman_reach_bedroom:
             ROS_INFO("[TASK2Actions] Navigation to bedroom");
             if (this->ActionNavigate(this->config_.bedroom_poi)){
-                this->postman_state = postman_offer_gripper;
+                this->postman_state = postman_wait_offer_gripper_2;
                 this->play_motion.execute_motion(OFFER_GRIPPER_MOTION);
             }
             break;
-        case postman_offer_gripper:
+        case postman_wait_offer_gripper_2:
             if (this->play_motion.is_finished()){
                 this->postman_state = postman_request_get_package;
             }
@@ -564,19 +603,35 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
         case postman_request_get_package:
             ROS_INFO("[TASK2Actions] Request to take package");
             if (this->ActionSaySentence("Hello Granny Annie, please take the mail from my hand")){
-                this->postman_state = postman_open_gripper;
+                this->postman_state = postman_open_gripper_2;
                 this->gripper_module.open();
             }
             break;
-        case postman_open_gripper:
+        case postman_open_gripper_2:
+            ROS_INFO("[TASK2Actions]Open gripper");
             if (this->gripper_module.is_finished()){
-                this->postman_state = postman_arm_home;
-                this->play_motion.execute_motion(HOME_MOTION);
+                if (this->gripper_module.get_status() == NEN_GRIPPER_MODULE_SUCCESS){
+                    this->postman_state = postman_close_gripper_3;
+                    this->gripper_module.close();
+                }
             }
             break;
-        case postman_arm_home:
+
+        case postman_close_gripper_3:
+            ROS_INFO("[TASK2Actions]Close gripper");
+            if (this->gripper_module.is_finished()){
+                if (this->gripper_module.get_status() == NEN_GRIPPER_MODULE_SUCCESS){
+                    this->postman_state = postman_close_gripper_3;
+                    this->play_motion.execute_motion(HOME_MOTION);
+                }
+            }
+            break;
+        case postman_arm_home_2:
+            ROS_INFO("[TASK2Actions]Arm to home");
             if (this->play_motion.is_finished()){
-                this->postman_state = postman_finish;
+                if (this->play_motion.get_status() == PLAY_MOTION_MODULE_SUCCESS){
+                    this->postman_state = postman_finish;
+                }
             }
             break;
         case postman_finish:

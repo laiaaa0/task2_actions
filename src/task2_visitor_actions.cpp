@@ -428,10 +428,10 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
         case kimble_go_outside:
            ROS_INFO("[TASK2Actions] Navigation outside of bedroom");
             if (this->ActionNavigate(this->config_.bedroom_outside_poi)){
-                this->kimble_state = kimble_move_head;
+                this->kimble_state = kimble_move_head_down;
             }
             break;
-        case kimble_move_head:
+        case kimble_move_head_down:
 
            ROS_INFO("[TASK2Actions] Moving head");
             if (this->ActionMoveHead(this->config_.head_pos_kimble_pan, this->config_.head_pos_kimble_tilt)){
@@ -443,13 +443,38 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
         case kimble_wait_leave:
             ROS_INFO("[TASK2Actions] Waiting for image change");
             if (this->image_diff.has_changed()){
+                this->kimble_state = kimble_move_head_up;
+            }
+            break;
+        case kimble_move_head_up:
+           ROS_INFO("[TASK2Actions] Moving head");
+            if (this->ActionMoveHead(0.0, 0.0)){
+                this->kimble_state = kimble_ask_move_front;
+            }
+            break;
+        case kimble_ask_move_front:
+            ROS_INFO("[TASK2Actions] Asking move in front");
+            if (this->ActionSaySentence("Please move in front of me")){
                 this->kimble_state = kimble_nav_door;
             }
             break;
         case kimble_nav_door:
             ROS_INFO("[TASK2Actions] Navigation to door");
             if (this->ActionFollow()){
-                this->kimble_state = kimble_say_goodbye;
+                this->kimble_state = kimble_check_follow_ok;
+            }
+            break;
+        case kimble_check_follow_ok:
+            ROS_INFO("[TASK2Actions] Checking follow ok");
+            if (this->following.is_finished()){
+                if (this->following.get_status() == FOLLOWING_MODULE_SUCCESS){
+                    this->kimble_state = kimble_say_goodbye;
+                }
+                else {
+                    if (this->following.get_status() == FOLLOWING_MODULE_FAILURE){
+                        this->kimble_state = kimble_ask_move_front;
+                    }
+                }
             }
             break;
         case kimble_say_goodbye:
@@ -681,7 +706,7 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
                 this->plumber_state = plumber_wait_leave;
             }
             break;
-        case plumber_move_head:
+        case plumber_move_head_down:
             ROS_INFO("[TASK2Actions] Moving head");
             if (this->ActionMoveHead(this->config_.head_pos_plumber_pan,this->config_.head_pos_plumber_tilt)){
                 this->plumber_state = plumber_wait_leave;
@@ -692,14 +717,41 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
         case plumber_wait_leave:
             ROS_INFO("[TASK2Actions] Waiting for plumber to leave");
             if (this->image_diff.has_changed()){
+                this->plumber_state = plumber_move_head_up;
+            }
+            break;
+        case plumber_move_head_up:
+            ROS_INFO("[TASK2Actions] Moving head");
+            if (this->ActionMoveHead(0.0,0.0)){
+                this->plumber_state = plumber_ask_move_front;
+            }
+
+            break;
+        case plumber_ask_move_front:
+            ROS_INFO("[TASK2Actions] Asking move in front");
+            if (this->ActionSaySentence("Please move in front of me")){
                 this->plumber_state = plumber_nav_door;
             }
             break;
         case plumber_nav_door:
             ROS_INFO("[TASK2Actions] Navigation to door");
             if (this->ActionFollow()){
-                this->plumber_state = plumber_say_goodbye;
+                this->plumber_state = plumber_check_follow_ok;
             }
+            break;
+        case plumber_check_follow_ok:
+            ROS_INFO("[TASK2Actions] Checking follow ok");
+            if (this->following.is_finished()){
+                if (this->following.get_status() == FOLLOWING_MODULE_SUCCESS){
+                    this->plumber_state = plumber_say_goodbye;
+                }
+                else {
+                    if (this->following.get_status() == FOLLOWING_MODULE_FAILURE){
+                        this->plumber_state = plumber_ask_move_front;
+                    }
+                }
+            }
+
             break;
         case plumber_say_goodbye:
             ROS_INFO("[TASK2Actions] Saying goodbye");

@@ -89,9 +89,12 @@ typedef enum {
   kimble_nav_bedroom,
   kimble_say_wait_outside,
   kimble_go_outside,
-  kimble_move_head,
+  kimble_move_head_down,
   kimble_wait_leave,
+  kimble_move_head_up,
+  kimble_ask_move_front,
   kimble_nav_door,
+  kimble_check_follow_ok,
   kimble_say_goodbye,
   kimble_finish
 } task2_kimble_states;
@@ -131,9 +134,12 @@ typedef enum {
     plumber_listen_destination,
     plumber_turn_around_door,
     plumber_nav_poi,
-    plumber_move_head,
+    plumber_move_head_down,
     plumber_wait_leave,
+    plumber_move_head_up,
+    plumber_ask_move_front,
     plumber_nav_door,
+    plumber_check_follow_ok,
     plumber_say_goodbye,
     plumber_finish
 } task2_plumber_states;

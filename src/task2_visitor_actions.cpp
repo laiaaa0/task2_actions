@@ -20,6 +20,7 @@ following("following_module", this->module_nh.getNamespace())
   this->state =  T2_INIT_ACTION;
   this->status = T2_ACTIONS_MODULE_SUCCESS;
   this->current_action_retries_ = 0;
+  this->current_follow_retries_ = 0;
 
   this->spencer_tracked_people_rear_subscriber_ = this->module_nh.subscribe("current_id_rear", 1, &CTask2VisitorActions::spencer_tracked_people_rear_callback, this);
   pthread_mutex_init(&this->spencer_tracked_people_rear_mutex_,NULL);
@@ -69,15 +70,25 @@ bool CTask2VisitorActions::headsearch_callback_front(const int id){
 bool CTask2VisitorActions::ActionGuide(std::string & POI){
   static bool is_poi_sent = false;
   if (!is_poi_sent){
-    int id = DecideMainPersonID(GUIDING_MODE);
-    ROS_INFO("Start GUIDING person = %d", id);
-    if (id == -1){
-        ROS_ERROR("No person detected"); //TODO es quedara en loop infinit
-        return false;
-    }
-    else {
-        guiding.start(id, POI);
-        is_poi_sent = true;
+    if (this->ActionSaySentence("Please move behind me")){
+        int id = DecideMainPersonID(GUIDING_MODE);
+        ROS_INFO("Start GUIDING person = %d", id);
+        if (id == -1){
+            ROS_ERROR("No person detected");
+            if (this->current_action_retries_ >= this->config_.max_action_retries){
+                this->current_action_retries_ = 0;
+                return true;
+            }
+            else {
+                this->current_action_retries_++;
+                return false;
+            }
+        }
+        else {
+            this->current_action_retries_ = 0;
+            guiding.start(id, POI);
+            is_poi_sent = true;
+        }
     }
   }
   if (guiding.is_finished()){
@@ -102,10 +113,18 @@ bool CTask2VisitorActions::ActionFollow(){
   if (!is_command_sent){
     int id = DecideMainPersonID(FOLLOWING_MODE);
     if (id == -1){
-        ROS_ERROR("No person detected"); //TODO es quedara en loop infinit
-        return false;
+        ROS_ERROR("No person detected");
+        if (this->current_action_retries_ >= this->config_.max_action_retries){
+            this->current_action_retries_ = 0;
+            return true;
+        }
+        else {
+            this->current_action_retries_ ++;
+            return false;
+        }
     }
     else {
+        this->current_action_retries_ = 0;
         following.start(id);
         is_command_sent = true;
         this->speech.listen();
@@ -450,6 +469,7 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
            ROS_INFO("[TASK2Actions] Moving head");
             if (this->ActionMoveHead(0.0, 0.0)){
                 this->kimble_state = kimble_ask_move_front;
+                this->current_follow_retries_ = 0;
             }
             break;
         case kimble_ask_move_front:
@@ -472,7 +492,14 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
                 }
                 else {
                     if (this->following.get_status() == FOLLOWING_MODULE_FAILURE){
-                        this->kimble_state = kimble_ask_move_front;
+                        if (this->current_follow_retries_ > this->config_.max_follow_retries){
+                            this->kimble_state = kimble_say_goodbye;
+                        }
+                        else {
+                            this->kimble_state = kimble_ask_move_front;
+                            this->current_follow_retries_ ++;
+
+                        }
                     }
                 }
             }
@@ -724,6 +751,7 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
             ROS_INFO("[TASK2Actions] Moving head");
             if (this->ActionMoveHead(0.0,0.0)){
                 this->plumber_state = plumber_ask_move_front;
+                this->current_follow_retries_ = 0;
             }
 
             break;
@@ -747,7 +775,15 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
                 }
                 else {
                     if (this->following.get_status() == FOLLOWING_MODULE_FAILURE){
-                        this->plumber_state = plumber_ask_move_front;
+
+                        if (this->current_follow_retries_ > this->config_.max_follow_retries){
+                            this->plumber_state = plumber_say_goodbye;
+                        }
+                        else {
+                            this->plumber_state = plumber_ask_move_front;
+                            this->current_follow_retries_ ++;
+
+                        }
                     }
                 }
             }

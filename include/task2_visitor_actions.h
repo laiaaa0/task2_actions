@@ -37,7 +37,7 @@
 
 #include <tiago_modules/tts_module.h>
 #include <tiago_modules/nav_module.h>
-#include <tiago_modules/gripper_module.h>
+#include <nen_modules/nen_gripper_module.h>
 #include <tiago_modules/head_module.h>
 #include <tiago_modules/play_motion_module.h>
 #include <tiago_modules/move_platform_module.h>
@@ -49,6 +49,7 @@
 #include <nen_modules/image_diff_module.h>
 #include <nen_modules/guiding_module.h>
 #include <nen_modules/following_module.h>
+#include <nen_modules/nen_gripper_module.h>
 
 #include <spencer_tracking_msgs/TrackedPersons.h>
 #include <spencer_tracking_msgs/TrackedPerson.h>
@@ -88,23 +89,32 @@ typedef enum {
   kimble_nav_bedroom,
   kimble_say_wait_outside,
   kimble_go_outside,
-  kimble_move_head,
+  kimble_move_head_down,
   kimble_wait_leave,
+  kimble_move_head_up,
+  kimble_ask_move_front,
   kimble_nav_door,
+  kimble_check_follow_ok,
   kimble_say_goodbye,
   kimble_finish
 } task2_kimble_states;
 
 typedef enum{
+    postman_init,
+    postman_wait_close_gripper_1,
+    postman_wait_offer_gripper_1,
+    postman_wait_open_gripper_1,
     postman_ask_deliver,
     postman_wait_timer,
-    postman_close_gripper,
+    postman_close_gripper_2,
     postman_say_goodbye,
+    postman_arm_home_1,
     postman_reach_bedroom,
-    postman_offer_gripper,
+    postman_wait_offer_gripper_2,
     postman_request_get_package,
-    postman_open_gripper,
-    postman_arm_home,
+    postman_open_gripper_2,
+    postman_close_gripper_3,
+    postman_arm_home_2,
     postman_finish
 } task2_postman_states;
 
@@ -124,9 +134,12 @@ typedef enum {
     plumber_listen_destination,
     plumber_turn_around_door,
     plumber_nav_poi,
-    plumber_move_head,
+    plumber_move_head_down,
     plumber_wait_leave,
+    plumber_move_head_up,
+    plumber_ask_move_front,
     plumber_nav_door,
+    plumber_check_follow_ok,
     plumber_say_goodbye,
     plumber_finish
 } task2_plumber_states;
@@ -175,7 +188,7 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
     std::string plumber_destination_poi_;
 
     //Gripper module for the postman
-    CGripperModule gripper_module;
+    CNenGripperModule gripper_module;
     //Play motions to offer gripper for the postman
     CPlayMotionModule play_motion;
 
@@ -230,6 +243,7 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
     task2_deliman_states deliman_state;
 
     int current_action_retries_;
+    int current_follow_retries_;
 
     //State machines
     task2_action_states state;

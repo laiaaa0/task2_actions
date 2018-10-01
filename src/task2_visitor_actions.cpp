@@ -20,6 +20,7 @@ following("following_module", this->module_nh.getNamespace())
   this->state =  T2_INIT_ACTION;
   this->status = T2_ACTIONS_MODULE_SUCCESS;
   this->current_action_retries_ = 0;
+  this->current_follow_retries_ = 0;
 
   this->spencer_tracked_people_rear_subscriber_ = this->module_nh.subscribe("current_id_rear", 1, &CTask2VisitorActions::spencer_tracked_people_rear_callback, this);
   pthread_mutex_init(&this->spencer_tracked_people_rear_mutex_,NULL);
@@ -69,15 +70,25 @@ bool CTask2VisitorActions::headsearch_callback_front(const int id){
 bool CTask2VisitorActions::ActionGuide(std::string & POI){
   static bool is_poi_sent = false;
   if (!is_poi_sent){
-    int id = DecideMainPersonID(GUIDING_MODE);
-    ROS_INFO("Start GUIDING person = %d", id);
-    if (id == -1){
-        ROS_ERROR("No person detected"); //TODO es quedara en loop infinit
-        return false;
-    }
-    else {
-        guiding.start(id, POI);
-        is_poi_sent = true;
+    if (this->ActionSaySentence("Please move behind me")){
+        int id = DecideMainPersonID(GUIDING_MODE);
+        ROS_INFO("Start GUIDING person = %d", id);
+        if (id == -1){
+            ROS_ERROR("No person detected");
+            if (this->current_action_retries_ >= this->config_.max_action_retries){
+                this->current_action_retries_ = 0;
+                return true;
+            }
+            else {
+                this->current_action_retries_++;
+                return false;
+            }
+        }
+        else {
+            this->current_action_retries_ = 0;
+            guiding.start(id, POI);
+            is_poi_sent = true;
+        }
     }
   }
   if (guiding.is_finished()){
@@ -102,10 +113,18 @@ bool CTask2VisitorActions::ActionFollow(){
   if (!is_command_sent){
     int id = DecideMainPersonID(FOLLOWING_MODE);
     if (id == -1){
-        ROS_ERROR("No person detected"); //TODO es quedara en loop infinit
-        return false;
+        ROS_ERROR("No person detected");
+        if (this->current_action_retries_ >= this->config_.max_action_retries){
+            this->current_action_retries_ = 0;
+            return true;
+        }
+        else {
+            this->current_action_retries_ ++;
+            return false;
+        }
     }
     else {
+        this->current_action_retries_ = 0;
         following.start(id);
         is_command_sent = true;
         this->speech.listen();
@@ -375,7 +394,7 @@ task2_action_states CTask2VisitorActions::get_state(void){
 void CTask2VisitorActions::SetInitialStatesAllPersons(){
             this->kimble_state = kimble_request_follow;
             this->deliman_state = deliman_request_follow_kitchen;
-            this->postman_state = postman_ask_deliver;
+            this->postman_state = postman_init;
             this->plumber_state = plumber_ask_destination;
 }
 bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
@@ -428,10 +447,10 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
         case kimble_go_outside:
            ROS_INFO("[TASK2Actions] Navigation outside of bedroom");
             if (this->ActionNavigate(this->config_.bedroom_outside_poi)){
-                this->kimble_state = kimble_move_head;
+                this->kimble_state = kimble_move_head_down;
             }
             break;
-        case kimble_move_head:
+        case kimble_move_head_down:
 
            ROS_INFO("[TASK2Actions] Moving head");
             if (this->ActionMoveHead(this->config_.head_pos_kimble_pan, this->config_.head_pos_kimble_tilt)){
@@ -443,13 +462,46 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
         case kimble_wait_leave:
             ROS_INFO("[TASK2Actions] Waiting for image change");
             if (this->image_diff.has_changed()){
+                this->kimble_state = kimble_move_head_up;
+            }
+            break;
+        case kimble_move_head_up:
+           ROS_INFO("[TASK2Actions] Moving head");
+            if (this->ActionMoveHead(0.0, 0.0)){
+                this->kimble_state = kimble_ask_move_front;
+                this->current_follow_retries_ = 0;
+            }
+            break;
+        case kimble_ask_move_front:
+            ROS_INFO("[TASK2Actions] Asking move in front");
+            if (this->ActionSaySentence("Please move in front of me")){
                 this->kimble_state = kimble_nav_door;
             }
             break;
         case kimble_nav_door:
             ROS_INFO("[TASK2Actions] Navigation to door");
             if (this->ActionFollow()){
-                this->kimble_state = kimble_say_goodbye;
+                this->kimble_state = kimble_check_follow_ok;
+            }
+            break;
+        case kimble_check_follow_ok:
+            ROS_INFO("[TASK2Actions] Checking follow ok");
+            if (this->following.is_finished()){
+                if (this->following.get_status() == FOLLOWING_MODULE_SUCCESS){
+                    this->kimble_state = kimble_say_goodbye;
+                }
+                else {
+                    if (this->following.get_status() == FOLLOWING_MODULE_FAILURE){
+                        if (this->current_follow_retries_ > this->config_.max_follow_retries){
+                            this->kimble_state = kimble_say_goodbye;
+                        }
+                        else {
+                            this->kimble_state = kimble_ask_move_front;
+                            this->current_follow_retries_ ++;
+
+                        }
+                    }
+                }
             }
             break;
         case kimble_say_goodbye:
@@ -522,7 +574,37 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
  bool CTask2VisitorActions::PostmanStateMachine(void){
      bool action_finished = false;
      switch (this->postman_state) {
-
+         case postman_init:
+            ROS_INFO("[TASK2Actions]Postman init");
+            this->gripper_module.close();
+            this->postman_state = postman_wait_close_gripper_1;
+            break;
+        case postman_wait_close_gripper_1:
+            ROS_INFO("[TASK2Actions]Postman close gripper");
+            if (this->gripper_module.is_finished()){
+                if (this->gripper_module.get_status() == NEN_GRIPPER_MODULE_SUCCESS){
+                    this->play_motion.execute_motion(OFFER_GRIPPER_MOTION);
+                    this->postman_state = postman_wait_offer_gripper_1;
+                }
+            }
+            break;
+        case postman_wait_offer_gripper_1:
+            ROS_INFO("[TASK2Actions] Postman wait offer gripper");
+            if (this->play_motion.is_finished()){
+                if (this->play_motion.get_status() == PLAY_MOTION_MODULE_SUCCESS){
+                        this->gripper_module.open();
+                        this->postman_state = postman_wait_open_gripper_1;
+                }
+            }
+            break;
+        case postman_wait_open_gripper_1:
+            ROS_INFO("[TASK2Actions]Postman open gripper");
+            if (this->gripper_module.is_finished()){
+                if (this->gripper_module.get_status() == NEN_GRIPPER_MODULE_SUCCESS){
+                        this->postman_state = postman_ask_deliver;
+                }
+            }
+            break;
         case postman_ask_deliver:
             ROS_INFO("[TASK2Actions]Requesting to deliver mail into hand");
             if (this->ActionSaySentence("Please put the mail in my hand")){
@@ -533,11 +615,11 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
         case postman_wait_timer:
             ROS_INFO("[TASK2Actions]Waiting before closing gripper");
             if (this->timeout.timed_out()){
-                this->postman_state = postman_close_gripper;
-                this->gripper_module.close_grasp();
+                this->postman_state = postman_close_gripper_2;
+                this->gripper_module.close();
             }
             break;
-        case postman_close_gripper:
+        case postman_close_gripper_2:
             ROS_INFO("[TASK2Actions]Closing gripper");
             if (this->gripper_module.is_finished()){
                 this->postman_state = postman_say_goodbye;
@@ -546,17 +628,26 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
         case postman_say_goodbye:
             ROS_INFO("[TASK2Actions] Saying goodbye");
             if (this->GenericSayGoodbye()){
-                this->postman_state = postman_reach_bedroom;
+                this->play_motion.execute_motion(HOME_MOTION);
+                this->postman_state = postman_arm_home_1;
+            }
+            break;
+        case postman_arm_home_1:
+            ROS_INFO("[TASK2Actions] Moving arm to home");
+            if (this->play_motion.is_finished()){
+                if (this->play_motion.get_status() == PLAY_MOTION_MODULE_SUCCESS){
+                        this->postman_state = postman_reach_bedroom;
+                }
             }
             break;
         case postman_reach_bedroom:
             ROS_INFO("[TASK2Actions] Navigation to bedroom");
             if (this->ActionNavigate(this->config_.bedroom_poi)){
-                this->postman_state = postman_offer_gripper;
+                this->postman_state = postman_wait_offer_gripper_2;
                 this->play_motion.execute_motion(OFFER_GRIPPER_MOTION);
             }
             break;
-        case postman_offer_gripper:
+        case postman_wait_offer_gripper_2:
             if (this->play_motion.is_finished()){
                 this->postman_state = postman_request_get_package;
             }
@@ -564,19 +655,35 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
         case postman_request_get_package:
             ROS_INFO("[TASK2Actions] Request to take package");
             if (this->ActionSaySentence("Hello Granny Annie, please take the mail from my hand")){
-                this->postman_state = postman_open_gripper;
+                this->postman_state = postman_open_gripper_2;
                 this->gripper_module.open();
             }
             break;
-        case postman_open_gripper:
+        case postman_open_gripper_2:
+            ROS_INFO("[TASK2Actions]Open gripper");
             if (this->gripper_module.is_finished()){
-                this->postman_state = postman_arm_home;
-                this->play_motion.execute_motion(HOME_MOTION);
+                if (this->gripper_module.get_status() == NEN_GRIPPER_MODULE_SUCCESS){
+                    this->postman_state = postman_close_gripper_3;
+                    this->gripper_module.close();
+                }
             }
             break;
-        case postman_arm_home:
+
+        case postman_close_gripper_3:
+            ROS_INFO("[TASK2Actions]Close gripper");
+            if (this->gripper_module.is_finished()){
+                if (this->gripper_module.get_status() == NEN_GRIPPER_MODULE_SUCCESS){
+                    this->postman_state = postman_close_gripper_3;
+                    this->play_motion.execute_motion(HOME_MOTION);
+                }
+            }
+            break;
+        case postman_arm_home_2:
+            ROS_INFO("[TASK2Actions]Arm to home");
             if (this->play_motion.is_finished()){
-                this->postman_state = postman_finish;
+                if (this->play_motion.get_status() == PLAY_MOTION_MODULE_SUCCESS){
+                    this->postman_state = postman_finish;
+                }
             }
             break;
         case postman_finish:
@@ -626,7 +733,7 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
                 this->plumber_state = plumber_wait_leave;
             }
             break;
-        case plumber_move_head:
+        case plumber_move_head_down:
             ROS_INFO("[TASK2Actions] Moving head");
             if (this->ActionMoveHead(this->config_.head_pos_plumber_pan,this->config_.head_pos_plumber_tilt)){
                 this->plumber_state = plumber_wait_leave;
@@ -637,14 +744,50 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
         case plumber_wait_leave:
             ROS_INFO("[TASK2Actions] Waiting for plumber to leave");
             if (this->image_diff.has_changed()){
+                this->plumber_state = plumber_move_head_up;
+            }
+            break;
+        case plumber_move_head_up:
+            ROS_INFO("[TASK2Actions] Moving head");
+            if (this->ActionMoveHead(0.0,0.0)){
+                this->plumber_state = plumber_ask_move_front;
+                this->current_follow_retries_ = 0;
+            }
+
+            break;
+        case plumber_ask_move_front:
+            ROS_INFO("[TASK2Actions] Asking move in front");
+            if (this->ActionSaySentence("Please move in front of me")){
                 this->plumber_state = plumber_nav_door;
             }
             break;
         case plumber_nav_door:
             ROS_INFO("[TASK2Actions] Navigation to door");
             if (this->ActionFollow()){
-                this->plumber_state = plumber_say_goodbye;
+                this->plumber_state = plumber_check_follow_ok;
             }
+            break;
+        case plumber_check_follow_ok:
+            ROS_INFO("[TASK2Actions] Checking follow ok");
+            if (this->following.is_finished()){
+                if (this->following.get_status() == FOLLOWING_MODULE_SUCCESS){
+                    this->plumber_state = plumber_say_goodbye;
+                }
+                else {
+                    if (this->following.get_status() == FOLLOWING_MODULE_FAILURE){
+
+                        if (this->current_follow_retries_ > this->config_.max_follow_retries){
+                            this->plumber_state = plumber_say_goodbye;
+                        }
+                        else {
+                            this->plumber_state = plumber_ask_move_front;
+                            this->current_follow_retries_ ++;
+
+                        }
+                    }
+                }
+            }
+
             break;
         case plumber_say_goodbye:
             ROS_INFO("[TASK2Actions] Saying goodbye");

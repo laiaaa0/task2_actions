@@ -32,6 +32,8 @@ following("following_module", this->module_nh.getNamespace())
   boost::function<bool (int)> cb_front (boost::bind(&CTask2VisitorActions::headsearch_callback_front, this, _1));
   this->following.set_callback(cb_front);
 
+  this->visitor_ = Undefined;
+
 }
 
 
@@ -181,6 +183,9 @@ int CTask2VisitorActions::DecideMainPersonID(const MOVING_MODE move_type){
     else if (move_type == FOLLOWING_MODE){
         all_detections = tracked_persons_front_;
     }
+
+    ROS_INFO("Deciding main person. Num detections= %d", all_detections.size());
+
     if (all_detections.size() < 1 ){
         return -1;
     }
@@ -193,7 +198,7 @@ int CTask2VisitorActions::DecideMainPersonID(const MOVING_MODE move_type){
         int min_id = 0;
         for (size_t i = 0; i < all_detections.size(); i++) {
             double current_distance = this->DistanceFromPerson(all_detections[i].pose.pose.position);
-            if (current_distance < min_distance){
+            if (current_distance < min_distance || (all_detections[i].is_matched && !all_detections[min_id].is_matched)){
                     min_distance = current_distance;
                     min_id = i;
             }
@@ -563,6 +568,8 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
             }
             break;
          case deliman_wait_detect_1:
+            ROS_INFO("[Task2Actions] Waiting detection");
+
             if (this->rear_spencer_detections){
                 this->deliman_state = deliman_guide_kitchen;
             }

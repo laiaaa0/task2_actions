@@ -86,6 +86,7 @@ typedef enum {
 typedef enum {
   kimble_request_follow,
   kimble_turn_around_door,
+  kimble_wait_detect,
   kimble_nav_bedroom,
   kimble_say_wait_outside,
   kimble_go_outside,
@@ -93,6 +94,7 @@ typedef enum {
   kimble_wait_leave,
   kimble_move_head_up,
   kimble_ask_move_front,
+  kimble_wait_detect_front,
   kimble_nav_door,
   kimble_check_follow_ok,
   kimble_say_goodbye,
@@ -121,9 +123,11 @@ typedef enum{
 typedef enum {
     deliman_request_follow_kitchen,
     deliman_turn_around_door,
+    deliman_wait_detect_1,
     deliman_guide_kitchen,
     deliman_request_deliver,
     deliman_request_follow_door,
+    deliman_wait_detect_2,
     deliman_guide_door,
     deliman_say_goodbye,
     deliman_finish
@@ -133,11 +137,13 @@ typedef enum {
     plumber_ask_destination,
     plumber_listen_destination,
     plumber_turn_around_door,
+    plumber_wait_detection,
     plumber_nav_poi,
     plumber_move_head_down,
     plumber_wait_leave,
     plumber_move_head_up,
     plumber_ask_move_front,
+    plumber_wait_detect_front,
     plumber_nav_door,
     plumber_check_follow_ok,
     plumber_say_goodbye,
@@ -212,6 +218,7 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
        void spencer_tracked_people_rear_mutex_exit(void);
 
        bool headsearch_callback_rear(const int id);
+       bool rear_spencer_detections;
 
        //Following module
 
@@ -226,6 +233,7 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
        void spencer_tracked_people_front_mutex_exit(void);
 
        bool headsearch_callback_front(const int id);
+       bool front_spencer_detections;
 
 
 

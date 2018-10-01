@@ -43,10 +43,24 @@ CTask2VisitorActions::~CTask2VisitorActions(void)
 void CTask2VisitorActions::spencer_tracked_people_rear_callback(const spencer_tracking_msgs::TrackedPersons::ConstPtr& msg){
     ROS_DEBUG("CTask2VisitorActions::spencer_tracked_people_callback: New Message Received");
     this->tracked_persons_rear_ = msg->tracks;
+    if (this->tracked_persons_rear_.size()>0){
+        for (size_t i = 0; i < this->tracked_persons_rear_.size(); i++) {
+            if (this->tracked_persons_rear_[i].is_matched){
+                this->rear_spencer_detections = true;
+            }
+        }
+    }
 }
 void CTask2VisitorActions::spencer_tracked_people_front_callback(const spencer_tracking_msgs::TrackedPersons::ConstPtr& msg){
     ROS_DEBUG("CTask2VisitorActions::spencer_tracked_people_callback: New Message Received");
     this->tracked_persons_front_ = msg->tracks;
+    if (this->tracked_persons_front_.size()>0){
+        for (size_t i = 0; i < this->tracked_persons_front_.size(); i++) {
+            if (this->tracked_persons_front_[i].is_matched){
+                this->front_spencer_detections = true;
+            }
+        }
+    }
 }
 
 bool CTask2VisitorActions::headsearch_callback_rear(const int id){
@@ -70,7 +84,6 @@ bool CTask2VisitorActions::headsearch_callback_front(const int id){
 bool CTask2VisitorActions::ActionGuide(std::string & POI){
   static bool is_poi_sent = false;
   if (!is_poi_sent){
-    if (this->ActionSaySentence("Please move behind me")){
         int id = DecideMainPersonID(GUIDING_MODE);
         ROS_INFO("Start GUIDING person = %d", id);
         if (id == -1){
@@ -89,7 +102,7 @@ bool CTask2VisitorActions::ActionGuide(std::string & POI){
             guiding.start(id, POI);
             is_poi_sent = true;
         }
-    }
+
   }
   if (guiding.is_finished()){
     if (guiding.get_status()==GUIDING_MODULE_SUCCESS or this->current_action_retries_ >= this->config_.max_action_retries){
@@ -134,7 +147,7 @@ bool CTask2VisitorActions::ActionFollow(){
     if (this->speech.get_status()==ECHO_MODULE_SUCCESS or this->current_action_retries_ >= this->config_.max_action_retries){
       int speech_cmd_id = this->speech.get_result().cmd.cmd_id;
       if (speech_cmd_id == this->config_.speech_stop_follow){
-          this->following.stop(); //TODO : Check is finished ??
+          this->following.stop();
           is_command_sent  = false;
           this->current_action_retries_ = 0;
           return true;
@@ -401,7 +414,6 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
     switch (person) {
         case Kimble:
             return KimbleStateMachine();
-            break;
         case Deliman:
             return DelimanStateMachine();
         case Postman:
@@ -429,7 +441,14 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
         case kimble_turn_around_door:
             ROS_INFO("[TASK2Actions] Turn around");
             if (this->ActionTurnAround()){
-                    this->kimble_state = kimble_nav_bedroom;
+                    this->kimble_state = kimble_wait_detect;
+                    this->rear_spencer_detections = false;
+            }
+            break;
+        case kimble_wait_detect:
+            ROS_INFO("[TASK2Actions] Wait detection");
+            if (this->rear_spencer_detections){
+                this->kimble_state = kimble_nav_bedroom;
             }
             break;
         case kimble_nav_bedroom:
@@ -475,7 +494,15 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
         case kimble_ask_move_front:
             ROS_INFO("[TASK2Actions] Asking move in front");
             if (this->ActionSaySentence("Please move in front of me")){
+                this->kimble_state = kimble_wait_detect_front;
+                this->front_spencer_detections = false;
+            }
+            break;
+        case kimble_wait_detect_front:
+            ROS_INFO("[TASK2Actions] Waiting detection");
+            if (this->front_spencer_detections){
                 this->kimble_state = kimble_nav_door;
+
             }
             break;
         case kimble_nav_door:
@@ -531,6 +558,12 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
          case deliman_turn_around_door:
             ROS_INFO("[Task2Actions] Turning around");
             if (this->ActionTurnAround()){
+                this->deliman_state = deliman_wait_detect_1;
+                this->rear_spencer_detections = false;
+            }
+            break;
+         case deliman_wait_detect_1:
+            if (this->rear_spencer_detections){
                 this->deliman_state = deliman_guide_kitchen;
             }
             break;
@@ -549,8 +582,16 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
          case deliman_request_follow_door:
 	    ROS_INFO("[TASK2Actions] Request follow to door");
              if (this->ActionSaySentence("Thanks. Please stand behind me")){
-                 this->deliman_state = deliman_guide_door;
+                 this->deliman_state = deliman_wait_detect_2;
+                 this->rear_spencer_detections = false;
              }
+            break;
+        case deliman_wait_detect_2:
+            ROS_INFO("[TASK2Actions] Request follow to door");
+            if (this->rear_spencer_detections){
+                this->deliman_state = deliman_guide_door;
+
+            }
             break;
          case deliman_guide_door:
 	        ROS_INFO("[TASK2Actions] Navigate to door");
@@ -673,7 +714,7 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
             ROS_INFO("[TASK2Actions]Close gripper");
             if (this->gripper_module.is_finished()){
                 if (this->gripper_module.get_status() == NEN_GRIPPER_MODULE_SUCCESS){
-                    this->postman_state = postman_close_gripper_3;
+                    this->postman_state = postman_arm_home_2;
                     this->play_motion.execute_motion(HOME_MOTION);
                 }
             }
@@ -724,7 +765,15 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
         case plumber_turn_around_door:
             ROS_INFO("[TASK2Actions] Turn around");
             if (this->ActionTurnAround()){
+                this->plumber_state = plumber_wait_detection;
+                this->rear_spencer_detections = false;
+            }
+            break;
+        case plumber_wait_detection:
+            ROS_INFO("[TASK2Actions] Wait detection");
+            if (this->rear_spencer_detections){
                 this->plumber_state = plumber_nav_poi;
+
             }
             break;
         case plumber_nav_poi:
@@ -758,7 +807,14 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
         case plumber_ask_move_front:
             ROS_INFO("[TASK2Actions] Asking move in front");
             if (this->ActionSaySentence("Please move in front of me")){
+                this->plumber_state = plumber_wait_detect_front;
+                this->front_spencer_detections = false;
+            }
+            break;
+        case plumber_wait_detect_front:
+            if (this->front_spencer_detections){
                 this->plumber_state = plumber_nav_door;
+
             }
             break;
         case plumber_nav_door:
@@ -775,19 +831,16 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
                 }
                 else {
                     if (this->following.get_status() == FOLLOWING_MODULE_FAILURE){
-
                         if (this->current_follow_retries_ > this->config_.max_follow_retries){
                             this->plumber_state = plumber_say_goodbye;
                         }
                         else {
                             this->plumber_state = plumber_ask_move_front;
                             this->current_follow_retries_ ++;
-
                         }
                     }
                 }
             }
-
             break;
         case plumber_say_goodbye:
             ROS_INFO("[TASK2Actions] Saying goodbye");
@@ -811,6 +864,10 @@ bool CTask2VisitorActions::SetPOIDependingOnCommand(const std::string & command_
     }
     else if (command_str == this->config_.kitchen_name){
         this->plumber_destination_poi_ = config_.kitchen_poi;
+    }
+    else if (command_str == this->config_.bedroom_name){
+        //TODO: since the plumber cant go to the bedroom, if the name is bedroom, go to the bathroom
+        this->plumber_destination_poi_ = config_.bathroom_poi;
     }
     else {
         recognised_command = false;

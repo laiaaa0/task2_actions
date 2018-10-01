@@ -100,7 +100,6 @@ bool CTask2VisitorActions::ActionGuide(std::string & POI){
             }
         }
         else {
-            this->current_action_retries_ = 0;
             guiding.start(id, POI);
             is_poi_sent = true;
         }
@@ -139,7 +138,6 @@ bool CTask2VisitorActions::ActionFollow(){
         }
     }
     else {
-        this->current_action_retries_ = 0;
         following.start(id);
         is_command_sent = true;
         this->speech.listen();

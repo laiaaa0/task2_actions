@@ -126,6 +126,7 @@ typedef enum {
     deliman_wait_detect_1,
     deliman_guide_kitchen,
     deliman_request_deliver,
+    deliman_head_normal,
     deliman_request_follow_door,
     deliman_wait_detect_2,
     deliman_guide_door,

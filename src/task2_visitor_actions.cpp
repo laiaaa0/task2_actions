@@ -446,12 +446,21 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
             if (this->ActionTurnAround()){
                     this->kimble_state = kimble_wait_detect;
                     this->rear_spencer_detections = false;
+                    this->timeout.start(ros::Duration(this->config_.wait_for_detections));
+
             }
             break;
         case kimble_wait_detect:
             ROS_INFO("[TASK2Actions] Wait detection");
             if (this->rear_spencer_detections){
                 this->kimble_state = kimble_nav_bedroom;
+            }
+
+            else {
+                if (this->timeout.timed_out()){
+                    this->tts.say("I could not find you. Goodbye");
+                    this->kimble_state = kimble_finish;
+                }
             }
             break;
         case kimble_nav_bedroom:
@@ -479,6 +488,7 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
                 this->kimble_state = kimble_wait_leave;
                 this->image_diff.set_reference_image();
                 this->image_diff.clear_change();
+                this->timeout.start(ros::Duration(this->config_.wait_leave_room));
             }
             break;
         case kimble_wait_leave:
@@ -486,12 +496,18 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
             if (this->image_diff.has_changed()){
                 this->kimble_state = kimble_move_head_up;
             }
+            else {
+                if (this->timeout.timed_out()){
+                    this->kimble_state = kimble_move_head_up;
+                }
+            }
             break;
         case kimble_move_head_up:
            ROS_INFO("[TASK2Actions] Moving head");
             if (this->ActionMoveHead(0.0, 0.0)){
                 this->kimble_state = kimble_ask_move_front;
                 this->current_follow_retries_ = 0;
+
             }
             break;
         case kimble_ask_move_front:
@@ -499,6 +515,7 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
             if (this->ActionSaySentence("Please move in front of me")){
                 this->kimble_state = kimble_wait_detect_front;
                 this->front_spencer_detections = false;
+                this->timeout.start(ros::Duration(this->config_.wait_for_detections));
             }
             break;
         case kimble_wait_detect_front:
@@ -506,6 +523,12 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
             if (this->front_spencer_detections){
                 this->kimble_state = kimble_nav_door;
 
+            }
+            else {
+                if (this->timeout.timed_out()){
+                    this->tts.say("I could not find you. Goodbye");
+                    this->kimble_state = kimble_finish;
+                }
             }
             break;
         case kimble_nav_door:
@@ -563,6 +586,8 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
             if (this->ActionTurnAround()){
                 this->deliman_state = deliman_wait_detect_1;
                 this->rear_spencer_detections = false;
+                this->timeout.start(ros::Duration(this->config_.wait_for_detections));
+
             }
             break;
          case deliman_wait_detect_1:
@@ -570,6 +595,13 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
 
             if (this->rear_spencer_detections){
                 this->deliman_state = deliman_guide_kitchen;
+            }
+
+            else {
+                if (this->timeout.timed_out()){
+                    this->tts.say("I could not find you. Goodbye");
+                    this->deliman_state = deliman_finish;
+                }
             }
             break;
          case deliman_guide_kitchen:
@@ -581,6 +613,12 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
          case deliman_request_deliver:
 	    ROS_INFO("[TASK2Actions] Request deliver breakfast");
             if (this->ActionSaySentence("Please deliver the breakfast on the kitchen table")){
+                this->deliman_state = deliman_head_normal;
+            }
+            break;
+        case deliman_head_normal:
+            ROS_INFO("[TASK2Actions] Moving head");
+            if (this->ActionMoveHead(0.0,0.0)){
                 this->deliman_state = deliman_request_follow_door;
             }
             break;
@@ -589,13 +627,22 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
              if (this->ActionSaySentence("Thanks. Please stand behind me")){
                  this->deliman_state = deliman_wait_detect_2;
                  this->rear_spencer_detections = false;
+                 this->timeout.start(ros::Duration(this->config_.wait_for_detections));
+
              }
             break;
         case deliman_wait_detect_2:
-            ROS_INFO("[TASK2Actions] Request follow to door");
+            ROS_INFO("[TASK2Actions] Waiting detections");
             if (this->rear_spencer_detections){
                 this->deliman_state = deliman_guide_door;
 
+            }
+
+            else {
+                if (this->timeout.timed_out()){
+                    this->tts.say("I could not find you. Goodbye");
+                    this->deliman_state = deliman_finish;
+                }
             }
             break;
          case deliman_guide_door:
@@ -772,19 +819,26 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
             if (this->ActionTurnAround()){
                 this->plumber_state = plumber_wait_detection;
                 this->rear_spencer_detections = false;
+                this->timeout.start(ros::Duration(this->config_.wait_for_detections));
+
             }
             break;
         case plumber_wait_detection:
             ROS_INFO("[TASK2Actions] Wait detection");
             if (this->rear_spencer_detections){
                 this->plumber_state = plumber_nav_poi;
-
+            }
+            else {
+                if (this->timeout.timed_out()){
+                    this->tts.say("I could not find you. Goodbye");
+                    this->plumber_state = plumber_finish;
+                }
             }
             break;
         case plumber_nav_poi:
             ROS_INFO("[TASK2Actions] Navigation to destination");
             if (this->ActionGuide(this->plumber_destination_poi_)){
-                this->plumber_state = plumber_wait_leave;
+                this->plumber_state = plumber_move_head_down;
             }
             break;
         case plumber_move_head_down:
@@ -793,12 +847,20 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
                 this->plumber_state = plumber_wait_leave;
                 this->image_diff.set_reference_image();
                 this->image_diff.clear_change();
+                this->timeout.start(ros::Duration(this->config_.wait_leave_room));
+
             }
             break;
         case plumber_wait_leave:
             ROS_INFO("[TASK2Actions] Waiting for plumber to leave");
             if (this->image_diff.has_changed()){
                 this->plumber_state = plumber_move_head_up;
+            }
+
+            else {
+                if (this->timeout.timed_out()){
+                    this->plumber_state = plumber_move_head_up;
+                }
             }
             break;
         case plumber_move_head_up:
@@ -814,12 +876,18 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
             if (this->ActionSaySentence("Please move in front of me")){
                 this->plumber_state = plumber_wait_detect_front;
                 this->front_spencer_detections = false;
-            }
+                this->timeout.start(ros::Duration(this->config_.wait_for_detections));            }
             break;
         case plumber_wait_detect_front:
             if (this->front_spencer_detections){
                 this->plumber_state = plumber_nav_door;
 
+            }
+            else {
+                if (this->timeout.timed_out()){
+                    this->tts.say("I could not find you. Goodbye");
+                    this->plumber_state = plumber_finish;
+                }
             }
             break;
         case plumber_nav_door:
@@ -868,7 +936,7 @@ bool CTask2VisitorActions::SetPOIDependingOnCommand(const std::string & command_
         this->plumber_destination_poi_ = config_.bathroom_poi;
     }
     else if (command_str == this->config_.kitchen_name){
-        this->plumber_destination_poi_ = config_.kitchen_poi;
+        this->plumber_destination_poi_ = config_.kitchen_door_poi;
     }
     else if (command_str == this->config_.bedroom_name){
         //TODO: since the plumber cant go to the bedroom, if the name is bedroom, go to the bathroom

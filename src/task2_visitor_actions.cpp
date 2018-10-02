@@ -465,7 +465,13 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
         case kimble_nav_bedroom:
             ROS_INFO("[TASK2Actions] Navigation to bedroom");
             if (this->ActionGuide(this->config_.bedroom_poi)){
+                this->kimble_state = kimble_nav_bedroom_poi;
+            }
+            break;
+        case kimble_nav_bedroom_poi:
+            if (this->ActionNavigate(this->config_.bedroom_poi)){
                 this->kimble_state = kimble_say_wait_outside;
+
             }
             break;
         case kimble_say_wait_outside:
@@ -533,7 +539,13 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
         case kimble_nav_door:
             ROS_INFO("[TASK2Actions] Navigation to door");
             if (this->ActionFollow()){
+                this->kimble_state = kimble_nav_door_poi;
+            }
+            break;
+        case kimble_nav_door_poi:
+            if (this->ActionNavigate(this->config_.door_poi)){
                 this->kimble_state = kimble_check_follow_ok;
+
             }
             break;
         case kimble_check_follow_ok:
@@ -606,6 +618,11 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
          case deliman_guide_kitchen:
 	    ROS_INFO("[TASK2Actions] Navigate kitchen");
             if (this->ActionGuide(this->config_.kitchen_poi)){
+                this->deliman_state = deliman_nav_kitchen_poi;
+            }
+            break;
+            case deliman_nav_kitchen_poi:
+            if (this->ActionNavigate(this->config_.kitchen_poi)){
                 this->deliman_state = deliman_request_deliver;
             }
             break;
@@ -647,6 +664,11 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
          case deliman_guide_door:
 	        ROS_INFO("[TASK2Actions] Navigate to door");
             if (this->ActionGuide(this->config_.door_poi)){
+                 this->deliman_state = deliman_nav_door_poi;
+             }
+            break;
+        case deliman_nav_door_poi:
+            if (this->ActionNavigate(this->config_.door_poi)){
                  this->deliman_state = deliman_say_goodbye;
              }
             break;
@@ -837,6 +859,11 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
         case plumber_nav_poi:
             ROS_INFO("[TASK2Actions] Navigation to destination");
             if (this->ActionGuide(this->plumber_destination_poi_)){
+                this->plumber_state = plumber_nav_poi_verify;
+            }
+            break;
+        case plumber_nav_poi_verify:
+            if (this->ActionNavigate(this->plumber_destination_poi_)){
                 this->plumber_state = plumber_move_head_down;
             }
             break;
@@ -892,8 +919,13 @@ bool CTask2VisitorActions::ExecuteBehaviorForVisitor(const Person & person){
         case plumber_nav_door:
             ROS_INFO("[TASK2Actions] Navigation to door");
             if (this->ActionFollow()){
-                this->plumber_state = plumber_check_follow_ok;
+                this->plumber_state = plumber_nav_door_verify;
             }
+            break;
+        case plumber_nav_door_verify:
+        if (this->ActionNavigate(this->config_.door_poi)){
+            this->plumber_state = plumber_check_follow_ok;
+        }
             break;
         case plumber_check_follow_ok:
             ROS_INFO("[TASK2Actions] Checking follow ok");

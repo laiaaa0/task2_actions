@@ -113,7 +113,7 @@ bool CTask2VisitorActions::ActionGuide(std::string & POI){
 
     }
     else {
-      ROS_INFO ("[TASK2] Guiding module finished unsuccessfully. Retrying");
+      ROS_INFO ("[TASK2Actions] Guiding module finished unsuccessfully. Retrying %d of %d", this->current_action_retries_,this->config_.max_action_retries);
       is_poi_sent  = false;
       this->current_action_retries_ ++;
       return false;
@@ -301,7 +301,6 @@ bool CTask2VisitorActions::ActionMoveHead(double pan_angle, double tilt_angle){
     if (!is_command_sent){
         this->head.move_to(pan_angle,tilt_angle);
         is_command_sent = true;
-        this->current_action_retries_ = 0;
     }
     else {
       if (this->head.is_finished()){

@@ -181,28 +181,27 @@ int CTask2VisitorActions::DecideMainPersonID(const MOVING_MODE move_type){
     else if (move_type == FOLLOWING_MODE){
         all_detections = tracked_persons_front_;
     }
-
-    ROS_INFO("Deciding main person. Num detections= %d", all_detections.size());
-
-    if (all_detections.size() < 1 ){
-        return -1;
-    }
-
-    if (all_detections.size() == 1 ){
-        return all_detections[0].track_id;
-    }
-    else {
-        double min_distance = this->DistanceFromPerson(all_detections[0].pose.pose.position);
-        int min_id = 0;
-        for (size_t i = 0; i < all_detections.size(); i++) {
-            double current_distance = this->DistanceFromPerson(all_detections[i].pose.pose.position);
-            if (current_distance < min_distance || (all_detections[i].is_matched && !all_detections[min_id].is_matched)){
-                    min_distance = current_distance;
-                    min_id = i;
-            }
+    int min_id = -1;
+    int min_distance;
+    bool is_first_match = true;
+    for (size_t i = 0; i < all_detections.size(); i++) {
+        if (all_detections[i].is_matched){
+                if (is_first_match){
+                    is_first_match = false;
+                    min_distance = this->DistanceFromPerson(all_detections[i].pose.pose.position);
+                    min_id = all_detections[i].track_id;
+                }
+                else {
+                    if (this->DistanceFromPerson(all_detections[i].pose.pose.position) < min_distance){
+                        min_distance = this->DistanceFromPerson(all_detections[i].pose.pose.position);
+                        min_id = all_detections[i].track_id;
+                    }
+                }
         }
-        return min_id;
+
     }
+
+    return min_id;
 }
 
 

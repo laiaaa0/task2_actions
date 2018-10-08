@@ -145,6 +145,8 @@ typedef enum {
     plumber_wait_detection,
     plumber_nav_poi,
     plumber_nav_poi_verify,
+    plumber_say_wait_outside,
+    plumber_go_outside,
     plumber_move_head_down,
     plumber_wait_leave,
     plumber_move_head_up,
@@ -199,6 +201,7 @@ class CTask2VisitorActions : public CModule<task2_visitor_actions::Task2VisitorA
     CEchoModule speech;
     nen_common_msgs::EchoCmdResult speech_command_;
     std::string plumber_destination_poi_;
+    std::string plumber_destination_outside_poi_;
 
     //Gripper module for the postman
     CNenGripperModule gripper_module;
